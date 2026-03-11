@@ -1,0 +1,501 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, Check, FileText, LogOut, Shield, Users, Wallet, X } from 'lucide-react'
+import { api, clearSession } from '../api'
+
+type Pending = {
+  driver_id: number
+  name: string
+  email: string
+  phone: string
+  submitted: string
+  documents?: string[]
+}
+
+type User = {
+  id: number
+  role: 'rider' | 'driver' | 'admin'
+  name: string
+  email: string
+  status: 'active' | 'disabled'
+  rating_avg?: number
+}
+
+type FlaggedReport = {
+  id: string
+  type: string
+  reporter: string
+  reported: string
+  date: string
+}
+
+type City = {
+  id: number
+  name: string
+  is_active: boolean
+}
+
+type CityRequest = {
+  user_id: number
+  driver_name: string
+  driver_email: string
+  pending_city_id: number
+  pending_city_name: string
+}
+
+type TabKey = 'pending' | 'users' | 'fees' | 'reports'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'pending', label: 'Pending Approvals' },
+  { key: 'users', label: 'User Management' },
+  { key: 'fees', label: 'Platform Fees' },
+  { key: 'reports', label: 'Reports & Flags' },
+]
+
+const SAMPLE_REPORTS: FlaggedReport[] = [
+  { id: 'sample-1', type: 'Driver Behavior', reporter: 'John Smith', reported: 'Tom Brown', date: '2026-02-02' },
+  { id: 'sample-2', type: 'Payment Issue', reporter: 'Lisa Wong', reported: 'System', date: '2026-02-03' },
+]
+
+function formatDate(dateLike: string) {
+  const d = new Date(dateLike)
+  if (Number.isNaN(d.valueOf())) return dateLike
+  return d.toISOString().slice(0, 10)
+}
+
+export default function AdminDashboard() {
+  const nav = useNavigate()
+  const [activeTab, setActiveTab] = useState<TabKey>('pending')
+  const [pending, setPending] = useState<Pending[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [reports, setReports] = useState<FlaggedReport[]>([])
+  const [cities, setCities] = useState<City[]>([])
+  const [cityRequests, setCityRequests] = useState<CityRequest[]>([])
+  const [newCity, setNewCity] = useState('')
+  const [fee, setFee] = useState<number>(0.5)
+  const [loading, setLoading] = useState(true)
+  const [savingFee, setSavingFee] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  async function load() {
+    setLoading(true)
+    try {
+      const [p, u, f, r, c, cr] = await Promise.all([
+        api.get('/admin/drivers/pending'),
+        api.get('/admin/users'),
+        api.get('/admin/fee'),
+        api.get('/admin/reports'),
+        api.get('/admin/cities'),
+        api.get('/admin/cities/requests'),
+      ])
+      setPending(p.data)
+      setUsers(u.data)
+      setFee(f.data.fee_per_ride)
+      setReports(r.data)
+      setCities(c.data)
+      setCityRequests(cr.data)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function saveFee() {
+    setSavingFee(true)
+    setMsg(null)
+    try {
+      await api.post('/admin/fee', { fee_per_ride: fee })
+      setMsg('Platform fee updated.')
+      await load()
+    } finally {
+      setSavingFee(false)
+    }
+  }
+
+  const reportRows = reports.length ? reports : SAMPLE_REPORTS
+
+  const stats = useMemo(
+    () => [
+      {
+        label: 'Pending Approvals',
+        value: pending.length,
+        icon: <FileText className="h-11 w-11 text-amber-200" />,
+      },
+      {
+        label: 'Total Users',
+        value: users.length,
+        icon: <Users className="h-11 w-11 text-blue-200" />,
+      },
+      {
+        label: 'Platform Fee',
+        value: `$${fee.toFixed(2)}`,
+        icon: <Wallet className="h-11 w-11 text-emerald-200" />,
+      },
+      {
+        label: 'Flagged Reports',
+        value: reportRows.length,
+        icon: <AlertTriangle className="h-11 w-11 text-rose-200" />,
+      },
+    ],
+    [fee, pending.length, reportRows.length, users.length]
+  )
+
+  async function approveDriver(driverId: number) {
+    await api.post(`/admin/drivers/${driverId}/approve`)
+    await load()
+  }
+
+  async function rejectDriver(driverId: number) {
+    await api.post(`/admin/drivers/${driverId}/reject`)
+    await load()
+  }
+
+  async function toggleUser(uid: number, nextState: 'enable' | 'disable') {
+    await api.post(`/admin/users/${uid}/${nextState}`)
+    await load()
+  }
+
+  async function addCity() {
+    const name = newCity.trim()
+    if (!name) return
+    await api.post('/admin/cities', { name })
+    setNewCity('')
+    await load()
+  }
+
+  async function removeCity(cityId: number) {
+    await api.delete(`/admin/cities/${cityId}`)
+    await load()
+  }
+
+  async function approveCityRequest(userId: number) {
+    await api.post(`/admin/cities/requests/${userId}/approve`)
+    await load()
+  }
+
+  async function rejectCityRequest(userId: number) {
+    await api.post(`/admin/cities/requests/${userId}/reject`)
+    await load()
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <header className="border-b border-slate-300 bg-white">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5">
+          <div className="flex items-center gap-3">
+            <Shield className="h-8 w-8 text-brand-600" strokeWidth={1.8} />
+            <h1 className="text-3xl font-black">Admin Dashboard</h1>
+          </div>
+          <button
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+            onClick={() => {
+              clearSession()
+              nav('/login')
+            }}
+          >
+            <LogOut className="h-5 w-5" />
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
+        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <article key={stat.label} className="rounded-3xl border border-slate-300 bg-white px-8 py-8">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-base text-slate-600">{stat.label}</div>
+                  <div className="mt-2 text-4xl font-bold">{stat.value}</div>
+                </div>
+                {stat.icon}
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <section className="rounded-full bg-slate-200 p-1.5">
+          <div className="grid grid-cols-2 md:grid-cols-4">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                className={[
+                  'rounded-full px-4 py-3 text-sm font-bold transition',
+                  activeTab === tab.key ? 'border border-slate-300 bg-white shadow-sm' : 'text-slate-900 hover:bg-slate-100',
+                ].join(' ')}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-300 bg-white p-8">
+          {loading && <div className="text-base text-slate-600">Loading...</div>}
+
+          {!loading && activeTab === 'pending' && (
+            <div>
+              <h2 className="text-2xl font-black">Pending Driver Approvals</h2>
+              <p className="mt-2 text-base text-slate-600">Review and approve driver applications</p>
+
+              {pending.length === 0 ? (
+                <div className="mt-8 text-base text-slate-500 sm:text-xl">No pending approvals right now.</div>
+              ) : (
+                <div className="mt-8 overflow-x-auto">
+                  <table className="min-w-full text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-sm font-bold">
+                        <th className="px-3 py-4">Name</th>
+                        <th className="px-3 py-4">Email</th>
+                        <th className="px-3 py-4">Phone</th>
+                        <th className="px-3 py-4">Applied Date</th>
+                        <th className="px-3 py-4">Documents</th>
+                        <th className="px-3 py-4">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pending.map((driver) => (
+                        <tr key={driver.driver_id} className="border-b border-slate-200 text-sm">
+                          <td className="px-3 py-4">{driver.name}</td>
+                          <td className="px-3 py-4">{driver.email}</td>
+                          <td className="px-3 py-4">{driver.phone}</td>
+                          <td className="px-3 py-4">{formatDate(driver.submitted)}</td>
+                          <td className="px-3 py-4">
+                            <div className="flex flex-wrap gap-2">
+                              {(driver.documents ?? ['License', 'ID', 'Insurance']).map((doc) => (
+                                <span key={doc} className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold">
+                                  {doc}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-3 py-4">
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
+                                onClick={() => approveDriver(driver.driver_id)}
+                              >
+                                <Check className="h-5 w-5" />
+                                Approve
+                              </button>
+                              <button
+                                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
+                                onClick={() => rejectDriver(driver.driver_id)}
+                              >
+                                <X className="h-5 w-5" />
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="mt-10">
+                <h3 className="text-xl font-black">Pending Driver City Requests</h3>
+                <p className="mt-1 text-sm text-slate-600">Approve or reject city changes requested by drivers</p>
+                {cityRequests.length === 0 ? (
+                  <div className="mt-4 text-sm text-slate-500">No pending city requests.</div>
+                ) : (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full text-left">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-sm font-bold">
+                          <th className="px-3 py-3">Driver</th>
+                          <th className="px-3 py-3">Email</th>
+                          <th className="px-3 py-3">Requested City</th>
+                          <th className="px-3 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cityRequests.map((req) => (
+                          <tr key={req.user_id} className="border-b border-slate-200 text-sm">
+                            <td className="px-3 py-3">{req.driver_name}</td>
+                            <td className="px-3 py-3">{req.driver_email}</td>
+                            <td className="px-3 py-3">{req.pending_city_name}</td>
+                            <td className="px-3 py-3">
+                              <div className="flex gap-2">
+                                <button className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700" onClick={() => approveCityRequest(req.user_id)}>
+                                  Approve
+                                </button>
+                                <button className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700" onClick={() => rejectCityRequest(req.user_id)}>
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!loading && activeTab === 'users' && (
+            <div>
+              <h2 className="text-2xl font-black">User Management</h2>
+              <p className="mt-2 text-base text-slate-600">Manage rider and driver accounts</p>
+
+              <div className="mt-8 overflow-x-auto">
+                <table className="min-w-full text-left">
+                  <thead className="bg-slate-100">
+                    <tr className="text-sm font-bold">
+                      <th className="px-3 py-4">Name</th>
+                      <th className="px-3 py-4">Email</th>
+                      <th className="px-3 py-4">Role</th>
+                      <th className="px-3 py-4">Rating</th>
+                      <th className="px-3 py-4">Status</th>
+                      <th className="px-3 py-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} className="border-b border-slate-200 text-sm">
+                        <td className="px-3 py-4">{u.name}</td>
+                        <td className="px-3 py-4">{u.email}</td>
+                        <td className="px-3 py-4">
+                          <span
+                            className={[
+                              'rounded-full px-3 py-1 text-xs font-bold',
+                              u.role === 'driver' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-900',
+                            ].join(' ')}
+                          >
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="px-3 py-4">{(u.rating_avg ?? 0).toFixed(1)}</td>
+                        <td className="px-3 py-4">
+                          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">{u.status}</span>
+                        </td>
+                        <td className="px-3 py-4">
+                          {u.status === 'active' ? (
+                            <button
+                              className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
+                              onClick={() => toggleUser(u.id, 'disable')}
+                            >
+                              Disable
+                            </button>
+                          ) : (
+                            <button
+                              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-50"
+                              onClick={() => toggleUser(u.id, 'enable')}
+                            >
+                              Enable
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-10 max-w-3xl rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-lg font-black">City Dropdown Management</h3>
+                <p className="mt-1 text-sm text-slate-600">Add or remove cities available to drivers</p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                    placeholder="Add city name"
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                  />
+                  <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={addCity}>
+                    Add City
+                  </button>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {cities.map((city) => (
+                    <span key={city.id} className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold">
+                      {city.name}
+                      <button className="text-rose-600 hover:underline" onClick={() => removeCity(city.id)}>
+                        remove
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!loading && activeTab === 'fees' && (
+            <div className="max-w-5xl">
+              <h2 className="text-2xl font-black">Platform Fee Settings</h2>
+              <p className="mt-2 text-base text-slate-600">Manage the platform service fee per completed ride</p>
+
+              <div className="mt-8 space-y-4">
+                <label className="block text-base font-bold" htmlFor="platform-fee">
+                  Platform Fee Per Ride (USD)
+                </label>
+                <input
+                  id="platform-fee"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                  type="number"
+                  step="0.01"
+                  value={fee}
+                  onChange={(e) => setFee(Number(e.target.value || 0))}
+                />
+                <p className="text-base text-slate-600">This dollar amount is charged on each completed ride</p>
+                <button
+                  className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-60"
+                  onClick={saveFee}
+                  disabled={savingFee}
+                >
+                  {savingFee ? 'Saving...' : 'Save Changes'}
+                </button>
+                {msg && <p className="text-base text-emerald-700">{msg}</p>}
+              </div>
+            </div>
+          )}
+
+          {!loading && activeTab === 'reports' && (
+            <div>
+              <h2 className="text-2xl font-black">Flagged Reports</h2>
+              <p className="mt-2 text-base text-slate-600">Review user-reported issues</p>
+
+              <div className="mt-8 overflow-x-auto">
+                <table className="min-w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-sm font-bold">
+                      <th className="px-3 py-4">Type</th>
+                      <th className="px-3 py-4">Reporter</th>
+                      <th className="px-3 py-4">Reported</th>
+                      <th className="px-3 py-4">Date</th>
+                      <th className="px-3 py-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportRows.map((report) => (
+                      <tr key={report.id} className="border-b border-slate-200 text-sm">
+                        <td className="px-3 py-4">
+                          <span className="rounded-full bg-rose-600 px-3 py-1 text-xs font-bold text-white">{report.type}</span>
+                        </td>
+                        <td className="px-3 py-4">{report.reporter}</td>
+                        <td className="px-3 py-4">{report.reported}</td>
+                        <td className="px-3 py-4">{report.date}</td>
+                        <td className="px-3 py-4">
+                          <button className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50">
+                            Review
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}
