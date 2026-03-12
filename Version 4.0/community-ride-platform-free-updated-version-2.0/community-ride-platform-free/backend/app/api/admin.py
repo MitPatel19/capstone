@@ -146,7 +146,7 @@ def set_fee(payload: PlatformFeeIn, user: User = Depends(require_role(UserRole.a
 
 @router.get("/cities", response_model=list[CityOut])
 def list_cities(user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):
-    rows = db.scalars(select(City).order_by(City.name.asc())).all()
+    rows = db.scalars(select(City).where(City.is_active == True).order_by(City.name.asc())).all()
     return [CityOut(id=c.id, name=c.name, is_active=c.is_active) for c in rows]
 
 
@@ -173,6 +173,8 @@ def remove_city(city_id: int, user: User = Depends(require_role(UserRole.admin))
     c = db.scalar(select(City).where(City.id == city_id))
     if not c:
         raise HTTPException(404, "City not found")
+    if not c.is_active:
+        return {"status": "removed"}
     c.is_active = False
     db.commit()
     return {"status": "removed"}

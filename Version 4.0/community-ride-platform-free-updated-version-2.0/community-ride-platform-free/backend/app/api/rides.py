@@ -6,7 +6,7 @@ import random, string
 
 from app.db.session import get_db
 from app.core.auth import get_current_user, require_role
-from app.models import User, UserRole, Ride, RideStop, RideStatus, Message, JoinRequest, JoinRequestStatus, Cancellation, Rating, DriverApprovalStatus, UserProfile, DriverVehicle, RideOffer, RideOfferStatus
+from app.models import User, UserRole, Ride, RideStop, RideStatus, Message, JoinRequest, JoinRequestStatus, Cancellation, Rating, DriverApprovalStatus, UserProfile, DriverVehicle, RideOffer, RideOfferStatus, DriverCitySelection
 from app.schemas import RideCreateIn, RideOut, MessageIn, MessageOut, BargainIn, CancelIn, JoinRequestIn, JoinRequestOut, OTPVerifyIn, DriverOfferOut, ConfirmPriceIn, RatingIn, RoutePointOut
 from app.ws.manager import manager
 
@@ -30,6 +30,26 @@ def is_accepted_joiner(db: Session, ride_id: int, user_id: int) -> bool:
     return jr is not None
 
 
+def get_user_approved_city_id(db: Session, user_id: int) -> int | None:
+    sel = db.scalar(select(DriverCitySelection).where(DriverCitySelection.user_id == user_id))
+    if not sel or sel.approval_status != "approved":
+        return None
+    return sel.approved_city_id
+
+
+def ensure_user_has_approved_city(user: User, db: Session) -> int:
+    city_id = get_user_approved_city_id(db, user.id)
+    if not city_id:
+        raise HTTPException(403, "Approved city selection is required")
+    return city_id
+
+
+def ride_city_matches_user(db: Session, ride: Ride, user: User) -> bool:
+    ride_city_id = get_user_approved_city_id(db, ride.rider_id)
+    user_city_id = get_user_approved_city_id(db, user.id)
+    return bool(ride_city_id and user_city_id and ride_city_id == user_city_id)
+
+
 def optimize_stop_order(stops: list[str]) -> list[str]:
     # Lightweight dedup optimization; preserves sequence while removing repeated waypoints.
     seen = set()
@@ -44,8 +64,16 @@ def optimize_stop_order(stops: list[str]) -> list[str]:
 
 
 async def notify_driver_market_update(db: Session, ride_id: int):
+    ride = db.scalar(select(Ride).where(Ride.id == ride_id))
+    if not ride:
+        return
+    ride_city_id = get_user_approved_city_id(db, ride.rider_id)
+    if not ride_city_id:
+        return
     driver_ids = db.scalars(select(User.id).where(User.role == UserRole.driver)).all()
     for did in driver_ids:
+        if get_user_approved_city_id(db, did) != ride_city_id:
+            continue
         await manager.send_to_user(did, {"type": "ride_market_update", "ride_id": ride_id})
 
 def ride_to_out(r: Ride, db: Session) -> RideOut:
@@ -128,15 +156,17 @@ def can_view_ride(user: User, ride: Ride, db: Session) -> bool:
     if user.role == UserRole.admin:
         return True
     if user.role == UserRole.driver:
-        if ride.status == RideStatus.requested:
+        if ride.driver_id == user.id:
             return True
-        return ride.driver_id == user.id
+        if ride.status in (RideStatus.requested, RideStatus.bargaining):
+            return ride_city_matches_user(db, ride, user)
+        return False
     if user.role == UserRole.rider:
         if ride.rider_id == user.id:
             return True
         if is_accepted_joiner(db, ride.id, user.id):
             return True
-        return ride.status in (RideStatus.confirmed, RideStatus.in_progress)
+        return ride.status in (RideStatus.confirmed, RideStatus.in_progress) and ride_city_matches_user(db, ride, user)
     return False
 
 
@@ -171,6 +201,7 @@ def my_rides(user: User = Depends(get_current_user), db: Session = Depends(get_d
 
 @router.get("/active", response_model=list[RideOut])
 def active_rides_for_riders(user: User = Depends(require_role(UserRole.rider)), db: Session = Depends(get_db)):
+    ensure_user_has_approved_city(user, db)
     already_joined_ids = set(
         db.scalars(
             select(JoinRequest.ride_id).where(
@@ -190,23 +221,25 @@ def active_rides_for_riders(user: User = Depends(require_role(UserRole.rider)), 
         .order_by(Ride.id.desc())
         .limit(100)
     ).all()
-    filtered = [r for r in rides if r.id not in already_joined_ids]
+    filtered = [r for r in rides if r.id not in already_joined_ids and ride_city_matches_user(db, r, user)]
     return [ride_to_out(r, db) for r in filtered]
 
 
 @router.get("/available", response_model=list[RideOut])
 def available_rides(user: User = Depends(require_role(UserRole.driver)), db: Session = Depends(get_db)):
     ensure_driver_docs_approved(user, db)
+    ensure_user_has_approved_city(user, db)
     rides = db.scalars(select(Ride).where(Ride.status.in_([RideStatus.requested, RideStatus.bargaining]))).all()
     # show only rides without driver or assigned to current driver
     out = []
     for r in rides:
-        if r.driver_id is None or r.driver_id == user.id:
+        if (r.driver_id is None or r.driver_id == user.id) and ride_city_matches_user(db, r, user):
             out.append(ride_to_out(r, db))
     return out
 
 @router.post("", response_model=RideOut)
 def create_ride(payload: RideCreateIn, user: User = Depends(require_role(UserRole.rider)), db: Session = Depends(get_db)):
+    ensure_user_has_approved_city(user, db)
     r = Ride(
         rider_id=user.id,
         pickup_text=payload.pickup_text,
@@ -226,11 +259,7 @@ def get_ride(ride_id: int, user: User = Depends(get_current_user), db: Session =
     r = db.scalar(select(Ride).where(Ride.id == ride_id))
     if not r:
         raise HTTPException(404, "Ride not found")
-    # basic access check
-    if user.role == UserRole.rider and r.rider_id != user.id and not is_accepted_joiner(db, r.id, user.id):
-        if r.status not in (RideStatus.confirmed, RideStatus.in_progress):
-            raise HTTPException(403, "Forbidden")
-    if user.role == UserRole.driver and r.driver_id not in (None, user.id) and r.status != RideStatus.requested:
+    if not can_view_ride(user, r, db):
         raise HTTPException(403, "Forbidden")
     return ride_to_out(r, db)
 
@@ -309,9 +338,12 @@ def route_plan(ride_id: int, user: User = Depends(get_current_user), db: Session
 @router.post("/{ride_id}/driver/accept", response_model=RideOut)
 async def driver_accept(ride_id: int, user: User = Depends(require_role(UserRole.driver)), db: Session = Depends(get_db)):
     ensure_driver_docs_approved(user, db)
+    ensure_user_has_approved_city(user, db)
     r = db.scalar(select(Ride).where(Ride.id == ride_id))
     if not r:
         raise HTTPException(404, "Ride not found")
+    if not ride_city_matches_user(db, r, user):
+        raise HTTPException(403, "Ride is not available in your approved city")
     if r.status not in (RideStatus.requested, RideStatus.bargaining) or r.driver_id is not None:
         raise HTTPException(400, "Ride already confirmed by another driver")
     # First driver to accept immediately confirms the ride at posted price.
@@ -348,7 +380,7 @@ def list_offers(ride_id: int, user: User = Depends(get_current_user), db: Sessio
         if r.rider_id != user.id and not is_accepted_joiner(db, r.id, user.id):
             raise HTTPException(403, "Forbidden")
     elif user.role == UserRole.driver:
-        if r.driver_id != user.id and r.status != RideStatus.requested and r.status != RideStatus.bargaining:
+        if r.driver_id != user.id and ((r.status != RideStatus.requested and r.status != RideStatus.bargaining) or not ride_city_matches_user(db, r, user)):
             raise HTTPException(403, "Forbidden")
     offers = db.scalars(select(RideOffer).where(RideOffer.ride_id == ride_id).order_by(RideOffer.updated_at.desc())).all()
     if user.role == UserRole.driver:
@@ -366,6 +398,9 @@ async def bargain(ride_id: int, payload: BargainIn, user: User = Depends(get_cur
         raise HTTPException(400, "Ride already confirmed")
     if user.role == UserRole.driver:
         ensure_driver_docs_approved(user, db)
+        ensure_user_has_approved_city(user, db)
+        if not ride_city_matches_user(db, r, user):
+            raise HTTPException(403, "Ride is not available in your approved city")
         of = db.scalar(select(RideOffer).where(RideOffer.ride_id == r.id, RideOffer.driver_id == user.id))
         if not of:
             of = RideOffer(ride_id=r.id, driver_id=user.id, latest_price=payload.new_price)
@@ -421,6 +456,9 @@ async def confirm_price(ride_id: int, payload: ConfirmPriceIn, user: User = Depe
         of.updated_at = datetime.utcnow()
         chosen_driver_id = of.driver_id
     elif user.role == UserRole.driver:
+        ensure_user_has_approved_city(user, db)
+        if not ride_city_matches_user(db, r, user):
+            raise HTTPException(403, "Ride is not available in your approved city")
         of = db.scalar(select(RideOffer).where(RideOffer.ride_id == r.id, RideOffer.driver_id == user.id))
         if not of:
             raise HTTPException(404, "No offer found for this driver")
@@ -524,11 +562,14 @@ async def send_message(ride_id: int, payload: MessageIn, user: User = Depends(ge
 
 @router.post("/{ride_id}/join", response_model=JoinRequestOut)
 async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depends(require_role(UserRole.rider)), db: Session = Depends(get_db)):
+    ensure_user_has_approved_city(user, db)
     if payload.price < 8:
         raise HTTPException(400, "Joiner price must be minimum $8")
     r = db.scalar(select(Ride).where(Ride.id == ride_id))
     if not r:
         raise HTTPException(404, "Ride not found")
+    if not ride_city_matches_user(db, r, user):
+        raise HTTPException(403, "Ride is not available in your approved city")
     if r.status not in (RideStatus.confirmed, RideStatus.in_progress):
         raise HTTPException(400, "Only confirmed or in-progress rides can be joined")
     if r.rider_id == user.id:
