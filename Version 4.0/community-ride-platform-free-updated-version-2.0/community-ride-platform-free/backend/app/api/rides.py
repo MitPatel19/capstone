@@ -600,6 +600,12 @@ async def send_message(ride_id: int, payload: MessageIn, user: User = Depends(ge
 @router.post("/{ride_id}/join", response_model=JoinRequestOut)
 async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depends(require_role(UserRole.rider)), db: Session = Depends(get_db)):
     ensure_user_has_approved_city(user, db)
+    from_text = (payload.from_text or "").strip()
+    to_text = (payload.to_text or "").strip()
+    if not from_text:
+        raise HTTPException(400, "Join pickup location is required")
+    if not to_text:
+        raise HTTPException(400, "Join dropoff location is required")
     if payload.price < 8:
         raise HTTPException(400, "Joiner price must be minimum $8")
     r = db.scalar(select(Ride).where(Ride.id == ride_id))
@@ -617,8 +623,8 @@ async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depend
     jr = JoinRequest(
         ride_id=ride_id,
         joiner_id=user.id,
-        from_text=payload.from_text,
-        to_text=payload.to_text,
+        from_text=from_text,
+        to_text=to_text,
         price=payload.price,
         primary_rider_credit=primary_rider_credit,
         driver_bonus=driver_bonus,

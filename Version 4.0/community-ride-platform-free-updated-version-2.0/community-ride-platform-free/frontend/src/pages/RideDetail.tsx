@@ -6,6 +6,7 @@ import { mapsLink, money } from '../utils'
 import { wsClient } from '../ws'
 import { Button } from '../components/Button'
 import { Card, CardContent, CardHeader } from '../components/Card'
+import { PlaceAutocomplete } from '../components/PlaceAutocomplete'
 
 type Ride = {
   id: number
@@ -119,6 +120,7 @@ export default function RideDetail() {
   const [joinTo, setJoinTo] = useState('')
   const [joinPrice, setJoinPrice] = useState(8)
   const [alreadyJoined, setAlreadyJoined] = useState(false)
+  const joinFormValid = useMemo(() => joinFrom.trim().length > 0 && joinTo.trim().length > 0, [joinFrom, joinTo])
 
   const isPrimaryRider = useMemo(() => !!ride && role === 'rider' && ride.rider_id === uid, [ride, role, uid])
   const isJoinedRider = useMemo(() => !!ride && role === 'rider' && ride.rider_id !== uid && alreadyJoined, [ride, role, uid, alreadyJoined])
@@ -270,10 +272,15 @@ export default function RideDetail() {
   }
 
   async function handleJoinRide() {
+    if (!joinFormValid) {
+      setErr('Pickup and drop-off locations are required to join a ride')
+      return
+    }
     await api.post(`/rides/${rideId}/join`, { from_text: joinFrom, to_text: joinTo, price: joinPrice })
     setJoinFrom('')
     setJoinTo('')
     setJoinPrice(8)
+    setErr(null)
     await load()
   }
 
@@ -421,17 +428,15 @@ export default function RideDetail() {
                 <div className="text-2xl font-black">Join This Ride</div>
                   <div className="mt-2 text-sm text-slate-600">Minimum join price is $8. Your amount is split automatically between the driver bonus and the main rider's fare credit.</div>
                   <div className="mt-3 grid gap-3">
-                    <input
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                      placeholder="Your pickup location"
+                    <PlaceAutocomplete
                       value={joinFrom}
-                      onChange={(e) => setJoinFrom(e.target.value)}
+                      onChange={setJoinFrom}
+                      placeholder="Your pickup location"
                     />
-                    <input
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                      placeholder="Your dropoff location"
+                    <PlaceAutocomplete
                       value={joinTo}
-                      onChange={(e) => setJoinTo(e.target.value)}
+                      onChange={setJoinTo}
+                      placeholder="Your dropoff location"
                     />
                     <input
                       type="number"
@@ -441,7 +446,7 @@ export default function RideDetail() {
                       value={joinPrice}
                       onChange={(e) => setJoinPrice(Number(e.target.value || 8))}
                     />
-                    <Button onClick={handleJoinRide}>Send Join Request</Button>
+                    <Button onClick={handleJoinRide} disabled={!joinFormValid}>Send Join Request</Button>
                   </div>
                 </div>
               )}
