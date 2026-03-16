@@ -221,6 +221,9 @@ class DriverDocsOut(BaseModel):
     review_note: str = ""
     docs_status: str = "up_to_date"
     docs_updated_at: Optional[str] = None
+    license_expiry_date: Optional[str] = None
+    license_expiry_status: str = "unknown"
+    license_expiry_source: str = "manual"
 
 
 class CityOut(BaseModel):
@@ -255,3 +258,13 @@ class RiderDefaultRouteOut(BaseModel):
 class RiderDefaultRouteIn(BaseModel):
     pickup_text: str = ""
     dropoff_text: str = ""
+
+
+class NotificationOut(BaseModel):
+    id: int
+    kind: str
+    title: str
+    body: str
+    action_path: str = ""
+    is_read: bool
+    created_at: str

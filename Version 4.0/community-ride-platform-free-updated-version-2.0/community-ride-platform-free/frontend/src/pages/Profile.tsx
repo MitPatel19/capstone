@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Mail, MapPin, Phone, Star, UserRound } from 'lucide-react'
+import { AlertTriangle, Mail, MapPin, Phone, Star, UserRound } from 'lucide-react'
 import { api, getRole } from '../api'
 import { Card, CardContent, CardHeader } from '../components/Card'
 import { Input, Label } from '../components/Input'
@@ -26,7 +26,14 @@ type DriverCity = {
   pending_city_name?: string
   approval_status?: string
 }
-type DriverDocs = { approval_status: string; review_note: string; docs_status: string }
+type DriverDocs = {
+  approval_status: string
+  review_note: string
+  docs_status: string
+  license_expiry_date?: string | null
+  license_expiry_status?: string
+  license_expiry_source?: string
+}
 type RiderDefaults = { pickup_text: string; dropoff_text: string; updated_at?: string | null }
 
 function initials(name: string) {
@@ -55,6 +62,7 @@ export default function Profile() {
   const [selectedCityId, setSelectedCityId] = useState<number>(0)
   const [driverDocs, setDriverDocs] = useState<DriverDocs | null>(null)
   const [licenseFile, setLicenseFile] = useState<File | null>(null)
+  const [licenseExpiryDate, setLicenseExpiryDate] = useState('')
   const [idFile, setIdFile] = useState<File | null>(null)
   const [insuranceFile, setInsuranceFile] = useState<File | null>(null)
 
@@ -94,10 +102,12 @@ export default function Profile() {
         setDriverCity(currentCity.data)
         setSelectedCityId(currentCity.data.pending_city_id || currentCity.data.approved_city_id || 0)
         setDriverDocs(docs.data)
+        setLicenseExpiryDate(docs.data?.license_expiry_date || '')
       } catch {
         setCities([])
         setDriverCity(null)
         setDriverDocs(null)
+        setLicenseExpiryDate('')
       }
     }
   }
@@ -180,7 +190,11 @@ export default function Profile() {
     setMsg(null)
     try {
       const fd = new FormData()
-      if (licenseFile) fd.append('license_file', licenseFile)
+      if (licenseFile) {
+        if (!licenseExpiryDate) throw new Error('Please enter the driver license expiry date')
+        fd.append('license_file', licenseFile)
+        fd.append('license_expiry_date', licenseExpiryDate)
+      }
       if (idFile) fd.append('id_file', idFile)
       if (insuranceFile) fd.append('insurance_file', insuranceFile)
       await api.post('/auth/driver_documents', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -189,6 +203,8 @@ export default function Profile() {
       setInsuranceFile(null)
       setMsg('Documents submitted for admin approval.')
       await load()
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail ?? e?.message ?? 'Unable to submit documents.')
     } finally {
       setSaving(false)
     }
@@ -233,6 +249,19 @@ export default function Profile() {
                   <div className="font-bold">Update Documents</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {driverDocs?.license_expiry_status === 'expired' && (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                        <div>
+                          <div className="font-bold">Driver license expired</div>
+                          <div className="mt-1">
+                            Your recorded driver license expired on <b>{driverDocs.license_expiry_date || '-'}</b>. Upload an updated license to stay compliant.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                     <div>
                       Driver approval: <b className="capitalize">{(driverDocs?.approval_status || '-').split('_').join(' ')}</b>
@@ -240,11 +269,19 @@ export default function Profile() {
                     <div>
                       Documents status: <b className="capitalize">{(driverDocs?.docs_status || '-').split('_').join(' ')}</b>
                     </div>
+                    <div>
+                      License expiry: <b>{driverDocs?.license_expiry_date || '-'}</b>
+                      {driverDocs?.license_expiry_status ? ` (${driverDocs.license_expiry_status.split('_').join(' ')})` : ''}
+                    </div>
                     {driverDocs?.review_note && <div className="mt-1 text-xs text-slate-600">{driverDocs.review_note}</div>}
                   </div>
                   <div>
                     <Label>Driver License</Label>
                     <Input type="file" onChange={(e) => setLicenseFile(e.target.files?.[0] ?? null)} />
+                  </div>
+                  <div>
+                    <Label>License Expiry Date</Label>
+                    <Input type="date" value={licenseExpiryDate} onChange={(e) => setLicenseExpiryDate(e.target.value)} />
                   </div>
                   <div>
                     <Label>Government ID</Label>

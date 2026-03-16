@@ -5,12 +5,13 @@ import os, uuid
 import aiofiles
 
 from app.db.session import get_db
-from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, UserProfile, Rating, Ride, RideStatus, JoinRequest, JoinRequestStatus, City, DriverCitySelection, RiderDefaultRoute, DriverVehicle
-from app.schemas import Token, UserOut, ProfileOut, ProfileUpdateIn, ChangePasswordIn, MetricsOut, RiderStatsOut, DriverDocsOut
+from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, UserProfile, Rating, Ride, RideStatus, JoinRequest, JoinRequestStatus, City, DriverCitySelection, RiderDefaultRoute, DriverVehicle, Notification
+from app.schemas import Token, UserOut, ProfileOut, ProfileUpdateIn, ChangePasswordIn, MetricsOut, RiderStatsOut, DriverDocsOut, NotificationOut
 from app.schemas import SignupRiderIn, SignupDriverIn, LoginIn
 from app.schemas import CityOut, DriverCityOut, DriverCitySelectIn, RiderDefaultRouteOut, RiderDefaultRouteIn
 from app.core.auth import hash_password, verify_password, create_access_token, get_current_user, require_role
 from app.core.settings import settings
+from app.services.license_monitor import parse_license_expiry_date, sync_driver_license_notifications
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -119,6 +120,7 @@ async def signup_driver(
     age: int = Form(...),
     is_student: bool = Form(...),
     city_id: int = Form(...),
+    license_expiry_date: str = Form(...),
     license_file: UploadFile = File(...),
     id_file: UploadFile = File(...),
     insurance_file: UploadFile = File(...),
@@ -132,6 +134,9 @@ async def signup_driver(
     if existing:
         raise HTTPException(400, "Email already registered")
     require_active_city(db, city_id)
+    parsed_license_expiry = parse_license_expiry_date(license_expiry_date)
+    if not parsed_license_expiry:
+        raise HTTPException(400, "License expiry date must use YYYY-MM-DD format")
 
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     async def save_file(up: UploadFile) -> str:
@@ -164,16 +169,23 @@ async def signup_driver(
         user_id=u.id,
         approval_status=DriverApprovalStatus.pending,
         license_path=license_path,
+        license_expiry_date=parsed_license_expiry,
+        license_expiry_status="valid",
+        license_expiry_source="manual",
         id_path=id_path,
         insurance_path=insurance_path,
     )
     db.add(profile)
     upsert_approved_city_selection(db, u.id, city_id)
     db.commit()
+    sync_driver_license_notifications(db)
+    db.commit()
     return {"status": "pending", "message": "Account pending admin approval (within 24 hours)"}
 
 @router.post("/login", response_model=Token)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
+    sync_driver_license_notifications(db)
+    db.commit()
     u = db.scalar(select(User).where(User.email == payload.email))
     if not u or not verify_password(payload.password, u.password_hash):
         raise HTTPException(401, "Invalid email or password")
@@ -189,6 +201,8 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=ProfileOut)
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    sync_driver_license_notifications(db)
+    db.commit()
     prof = get_or_create_profile(db, user.id)
     vehicle = get_or_create_driver_vehicle(db, user.id) if user.role == UserRole.driver else None
     avg, cnt = rating_summary(db, user.id)
@@ -339,6 +353,8 @@ def rider_stats(user: User = Depends(require_role(UserRole.rider)), db: Session 
 
 @router.get("/driver_docs", response_model=DriverDocsOut)
 def driver_docs(user: User = Depends(require_role(UserRole.driver)), db: Session = Depends(get_db)):
+    sync_driver_license_notifications(db)
+    db.commit()
     prof = user.driver_profile
     up = get_or_create_profile(db, user.id)
     if not prof:
@@ -348,12 +364,16 @@ def driver_docs(user: User = Depends(require_role(UserRole.driver)), db: Session
         reviewed_at=prof.reviewed_at.isoformat() if prof.reviewed_at else None,
         review_note=prof.review_note,
         docs_status=up.docs_status,
-        docs_updated_at=up.docs_updated_at.isoformat() if up.docs_updated_at else None
+        docs_updated_at=up.docs_updated_at.isoformat() if up.docs_updated_at else None,
+        license_expiry_date=prof.license_expiry_date.date().isoformat() if prof.license_expiry_date else None,
+        license_expiry_status=prof.license_expiry_status or "unknown",
+        license_expiry_source=prof.license_expiry_source or "manual",
     )
 
 @router.post("/driver_documents")
 async def update_driver_documents(
     license_file: UploadFile = File(None),
+    license_expiry_date: str = Form(""),
     id_file: UploadFile = File(None),
     insurance_file: UploadFile = File(None),
     user: User = Depends(require_role(UserRole.driver)),
@@ -379,7 +399,13 @@ async def update_driver_documents(
     ip = await save_optional(id_file)
     ins = await save_optional(insurance_file)
 
-    if lp: prof.license_path = lp
+    if lp:
+        parsed_license_expiry = parse_license_expiry_date(license_expiry_date)
+        if not parsed_license_expiry:
+            raise HTTPException(400, "License expiry date must use YYYY-MM-DD format when uploading a new driver license")
+        prof.license_path = lp
+        prof.license_expiry_date = parsed_license_expiry
+        prof.license_expiry_source = "manual"
     if ip: prof.id_path = ip
     if ins: prof.insurance_path = ins
 
@@ -394,6 +420,8 @@ async def update_driver_documents(
     up.docs_updated_at = datetime.utcnow()
 
     db.commit()
+    sync_driver_license_notifications(db)
+    db.commit()
     return {"status":"pending_review"}
 
 
@@ -401,6 +429,40 @@ async def update_driver_documents(
 def list_cities(db: Session = Depends(get_db)):
     cities = db.scalars(select(City).where(City.is_active == True).order_by(City.name.asc())).all()
     return [CityOut(id=c.id, name=c.name, is_active=c.is_active) for c in cities]
+
+
+@router.get("/notifications", response_model=list[NotificationOut])
+def list_notifications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    sync_driver_license_notifications(db)
+    db.commit()
+    notifications = db.scalars(
+        select(Notification)
+        .where(Notification.user_id == user.id)
+        .order_by(Notification.is_read.asc(), Notification.created_at.desc())
+        .limit(20)
+    ).all()
+    return [
+        NotificationOut(
+            id=n.id,
+            kind=n.kind,
+            title=n.title,
+            body=n.body,
+            action_path=n.action_path or "",
+            is_read=n.is_read,
+            created_at=n.created_at.isoformat(),
+        )
+        for n in notifications
+    ]
+
+
+@router.post("/notifications/{notification_id}/read", response_model=dict)
+def mark_notification_read(notification_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    notification = db.scalar(select(Notification).where(Notification.id == notification_id, Notification.user_id == user.id))
+    if not notification:
+        raise HTTPException(404, "Notification not found")
+    notification.is_read = True
+    db.commit()
+    return {"status": "read"}
 
 
 @router.get("/driver_city", response_model=DriverCityOut)

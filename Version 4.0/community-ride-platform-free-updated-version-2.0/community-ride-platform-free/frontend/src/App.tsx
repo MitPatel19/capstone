@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { getRole, getToken, setToken } from './api'
+import { api, getRole, getToken, setToken } from './api'
 import { wsClient } from './ws'
 import { Layout } from './components/Layout'
 import Landing from './pages/Landing'
@@ -20,7 +20,7 @@ import PaymentConfirmation from './pages/PaymentConfirmation'
 import Feedback from './pages/Feedback'
 import Profile from './pages/Profile'
 
-type Toast = { id: string; title: string; body: string; action?: { label: string; to: string } }
+type Toast = { id: string; title: string; body: string; action?: { label: string; to: string }; notificationId?: number }
 
 function Protected({ role, children }: { role: 'rider'|'driver'|'admin', children: React.ReactNode }) {
   const r = getRole()
@@ -34,15 +34,45 @@ export default function App() {
   const nav = useNavigate()
 
   useEffect(() => {
+    async function loadNotifications() {
+      if (!getToken()) {
+        setToasts((prev) => prev.filter((t) => !t.notificationId))
+        return
+      }
+      try {
+        const res = await api.get('/auth/notifications')
+        const unreadToasts = (res.data || [])
+          .filter((n: any) => !n.is_read)
+          .slice(0, 3)
+          .map((n: any) => ({
+            id: `notification-${n.id}`,
+            title: n.title,
+            body: n.body,
+            action: n.action_path ? { label: 'Open', to: n.action_path } : undefined,
+            notificationId: n.id,
+          }))
+        setToasts((prev) => {
+          const live = prev.filter((t) => !t.notificationId)
+          return [...unreadToasts, ...live].slice(0, 4)
+        })
+      } catch {
+        setToasts((prev) => prev.filter((t) => !t.notificationId))
+      }
+    }
+
     const syncSession = () => {
       const t = getToken()
       setToken(t)
       wsClient.close()
       wsClient.connect()
+      loadNotifications()
     }
     syncSession()
     const onAuthChanged = () => syncSession()
     window.addEventListener('crcp-auth-changed', onAuthChanged)
+    const notificationTimer = window.setInterval(() => {
+      loadNotifications()
+    }, 60000)
     const off = wsClient.on((msg) => {
       if (msg?.type === 'join_request') {
         const role = getRole()
@@ -73,6 +103,7 @@ export default function App() {
     })
     return () => {
       off()
+      window.clearInterval(notificationTimer)
       window.removeEventListener('crcp-auth-changed', onAuthChanged)
       wsClient.close()
     }
@@ -87,11 +118,11 @@ export default function App() {
             <div className="text-sm text-slate-600 mt-1">{t.body}</div>
             <div className="flex gap-2 mt-3">
               {t.action && (
-                <button className="text-sm font-semibold text-brand-700 hover:underline" onClick={() => { nav(t.action!.to); setToasts(prev=>prev.filter(x=>x.id!==t.id)) }}>
+                <button className="text-sm font-semibold text-brand-700 hover:underline" onClick={async () => { if (t.notificationId) { try { await api.post(`/auth/notifications/${t.notificationId}/read`) } catch {} } nav(t.action!.to); setToasts(prev=>prev.filter(x=>x.id!==t.id)) }}>
                   {t.action.label}
                 </button>
               )}
-              <button className="text-sm text-slate-500 hover:underline" onClick={() => setToasts(prev=>prev.filter(x=>x.id!==t.id))}>Dismiss</button>
+              <button className="text-sm text-slate-500 hover:underline" onClick={async () => { if (t.notificationId) { try { await api.post(`/auth/notifications/${t.notificationId}/read`) } catch {} } setToasts(prev=>prev.filter(x=>x.id!==t.id)) }}>Dismiss</button>
             </div>
           </div>
         ))}

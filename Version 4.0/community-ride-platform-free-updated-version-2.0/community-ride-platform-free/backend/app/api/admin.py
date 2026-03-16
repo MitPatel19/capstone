@@ -9,6 +9,7 @@ from app.core.auth import require_role
 from app.core.settings import settings
 from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, AccountStatus, PlatformFee, UserProfile, Rating, Cancellation, City, DriverCitySelection
 from app.schemas import PlatformFeeOut, PlatformFeeIn, UserOut, CityOut, CityIn
+from app.services.license_monitor import sync_driver_license_notifications
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -34,6 +35,8 @@ def upload_path_to_url(path: str) -> str:
 
 @router.get("/drivers/pending")
 def pending_drivers(user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):
+    sync_driver_license_notifications(db)
+    db.commit()
     rows = db.scalars(select(DriverProfile).where(DriverProfile.approval_status == DriverApprovalStatus.pending)).all()
     out = []
     for p in rows:
@@ -51,6 +54,8 @@ def pending_drivers(user: User = Depends(require_role(UserRole.admin)), db: Sess
             "phone": p.user.phone,
             "age": p.user.age,
             "submitted": p.user.created_at.isoformat(),
+            "license_expiry_date": p.license_expiry_date.date().isoformat() if p.license_expiry_date else None,
+            "license_expiry_status": p.license_expiry_status or "unknown",
             "documents": documents,
         })
     return out

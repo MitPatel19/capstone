@@ -27,6 +27,7 @@ export default function DriverSignup() {
   const [cities, setCities] = useState<City[]>([])
   const [cityId, setCityId] = useState(0)
   const [license, setLicense] = useState<File | null>(null)
+  const [licenseExpiryDate, setLicenseExpiryDate] = useState('')
   const [idFile, setIdFile] = useState<File | null>(null)
   const [insurance, setInsurance] = useState<File | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -44,6 +45,7 @@ export default function DriverSignup() {
     setLoading(true)
     try {
       if (!cityId) throw new Error('Please select your city')
+      if (!licenseExpiryDate) throw new Error('Please enter the driver license expiry date')
       const fd = new FormData()
       fd.append('name', name)
       fd.append('email', email)
@@ -52,6 +54,7 @@ export default function DriverSignup() {
       fd.append('age', String(age))
       fd.append('is_student', 'false')
       fd.append('city_id', String(cityId))
+      fd.append('license_expiry_date', licenseExpiryDate)
       if (!license || !idFile || !insurance) throw new Error('Please upload all documents')
       fd.append('license_file', license)
       fd.append('id_file', idFile)
@@ -121,6 +124,18 @@ export default function DriverSignup() {
               <h3 className="text-2xl font-black">Upload Documents</h3>
               <div className="mt-4 space-y-4">
                 <DocInput label="Driver License" onPick={setLicense} />
+                <div>
+                  <label className="mb-2 block text-base font-bold">License Expiry Date</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base"
+                    type="date"
+                    value={licenseExpiryDate}
+                    onChange={(e) => setLicenseExpiryDate(e.target.value)}
+                  />
+                  <div className="mt-2 text-sm text-slate-500">
+                    Enter the expiry date exactly as shown on the uploaded driver license.
+                  </div>
+                </div>
                 <DocInput label="Government ID" onPick={setIdFile} />
                 <DocInput label="Insurance Certificate" onPick={setInsurance} />
               </div>

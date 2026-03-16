@@ -54,6 +54,9 @@ class DriverProfile(Base):
     license_path: Mapped[str] = mapped_column(String(512), default="")
     id_path: Mapped[str] = mapped_column(String(512), default="")
     insurance_path: Mapped[str] = mapped_column(String(512), default="")
+    license_expiry_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    license_expiry_status: Mapped[str] = mapped_column(String(40), default="unknown")  # unknown | valid | expiring_soon | expired
+    license_expiry_source: Mapped[str] = mapped_column(String(40), default="manual")  # manual | extracted
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     review_note: Mapped[str] = mapped_column(String(255), default="")
 
@@ -262,3 +265,16 @@ class RiderDefaultRoute(Base):
     pickup_text: Mapped[str] = mapped_column(String(255), default="")
     dropoff_text: Mapped[str] = mapped_column(String(255), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(80), index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    body: Mapped[str] = mapped_column(String(500))
+    action_path: Mapped[str] = mapped_column(String(255), default="")
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

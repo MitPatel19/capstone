@@ -9,6 +9,8 @@ type Pending = {
   email: string
   phone: string
   submitted: string
+  license_expiry_date?: string | null
+  license_expiry_status?: string
   documents?: { label: string; url: string }[]
 }
 
@@ -262,6 +264,7 @@ export default function AdminDashboard() {
                         <th className="px-3 py-4">Email</th>
                         <th className="px-3 py-4">Phone</th>
                         <th className="px-3 py-4">Applied Date</th>
+                        <th className="px-3 py-4">License Status</th>
                         <th className="px-3 py-4">Documents</th>
                         <th className="px-3 py-4">Actions</th>
                       </tr>
@@ -273,6 +276,23 @@ export default function AdminDashboard() {
                           <td className="px-3 py-4">{driver.email}</td>
                           <td className="px-3 py-4">{driver.phone}</td>
                           <td className="px-3 py-4">{formatDate(driver.submitted)}</td>
+                          <td className="px-3 py-4">
+                            <div className="flex flex-col gap-1">
+                              <span
+                                className={[
+                                  'inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold',
+                                  driver.license_expiry_status === 'expired'
+                                    ? 'bg-rose-100 text-rose-700'
+                                    : driver.license_expiry_status === 'expiring_soon'
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-emerald-100 text-emerald-700',
+                                ].join(' ')}
+                              >
+                                {(driver.license_expiry_status || 'unknown').split('_').join(' ')}
+                              </span>
+                              <span className="text-xs text-slate-500">{driver.license_expiry_date || 'No expiry date recorded'}</span>
+                            </div>
+                          </td>
                           <td className="px-3 py-4">
                             <div className="flex flex-wrap gap-2">
                               {(driver.documents ?? []).length === 0 ? (
