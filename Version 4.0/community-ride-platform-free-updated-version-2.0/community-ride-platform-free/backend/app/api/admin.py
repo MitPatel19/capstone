@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from datetime import datetime
+import os
 
 from app.db.session import get_db
 from app.core.auth import require_role
+from app.core.settings import settings
 from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, AccountStatus, PlatformFee, UserProfile, Rating, Cancellation, City, DriverCitySelection
 from app.schemas import PlatformFeeOut, PlatformFeeIn, UserOut, CityOut, CityIn
 
@@ -16,6 +18,20 @@ def user_out(u: User, rating_avg: float = 0.0) -> UserOut:
         status=u.status.value, age=u.age, is_student=u.is_student, rating_avg=rating_avg
     )
 
+
+def upload_path_to_url(path: str) -> str:
+    if not path:
+        return ""
+    normalized_path = path.replace("\\", "/")
+    normalized_upload_dir = settings.UPLOAD_DIR.replace("\\", "/").rstrip("/")
+    filename = os.path.basename(normalized_path)
+
+    if normalized_path.startswith(normalized_upload_dir + "/"):
+        return f"/uploads/{filename}"
+    if "/uploads/" in normalized_path:
+        return normalized_path[normalized_path.index("/uploads/"):]
+    return f"/uploads/{filename}"
+
 @router.get("/drivers/pending")
 def pending_drivers(user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):
     rows = db.scalars(select(DriverProfile).where(DriverProfile.approval_status == DriverApprovalStatus.pending)).all()
@@ -23,11 +39,11 @@ def pending_drivers(user: User = Depends(require_role(UserRole.admin)), db: Sess
     for p in rows:
         documents = []
         if p.license_path:
-            documents.append("License")
+            documents.append({"label": "License", "url": upload_path_to_url(p.license_path)})
         if p.id_path:
-            documents.append("ID")
+            documents.append({"label": "ID", "url": upload_path_to_url(p.id_path)})
         if p.insurance_path:
-            documents.append("Insurance")
+            documents.append({"label": "Insurance", "url": upload_path_to_url(p.insurance_path)})
         out.append({
             "driver_id": p.user_id,
             "name": p.user.name,
@@ -35,7 +51,7 @@ def pending_drivers(user: User = Depends(require_role(UserRole.admin)), db: Sess
             "phone": p.user.phone,
             "age": p.user.age,
             "submitted": p.user.created_at.isoformat(),
-            "documents": documents if documents else ["License", "ID", "Insurance"],
+            "documents": documents,
         })
     return out
 

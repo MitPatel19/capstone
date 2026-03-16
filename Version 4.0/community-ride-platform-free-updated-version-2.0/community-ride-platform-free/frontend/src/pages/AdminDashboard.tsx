@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Check, FileText, LogOut, Shield, Users, Wallet, X } from 'lucide-react'
+import { AlertTriangle, Check, ExternalLink, FileText, ImageOff, LogOut, Shield, Users, Wallet, X } from 'lucide-react'
 import { api, clearSession } from '../api'
 
 type Pending = {
@@ -9,7 +9,7 @@ type Pending = {
   email: string
   phone: string
   submitted: string
-  documents?: string[]
+  documents?: { label: string; url: string }[]
 }
 
 type User = {
@@ -63,6 +63,13 @@ function formatDate(dateLike: string) {
   return d.toISOString().slice(0, 10)
 }
 
+function resolveDocumentUrl(url: string) {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  const baseURL = api.defaults.baseURL ?? window.location.origin
+  return new URL(url.startsWith('/') ? url : `/${url}`, baseURL).toString()
+}
+
 export default function AdminDashboard() {
   const nav = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('pending')
@@ -76,6 +83,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [savingFee, setSavingFee] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [selectedDocument, setSelectedDocument] = useState<{ label: string; url: string } | null>(null)
+  const [documentLoadFailed, setDocumentLoadFailed] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -266,11 +275,28 @@ export default function AdminDashboard() {
                           <td className="px-3 py-4">{formatDate(driver.submitted)}</td>
                           <td className="px-3 py-4">
                             <div className="flex flex-wrap gap-2">
-                              {(driver.documents ?? ['License', 'ID', 'Insurance']).map((doc) => (
-                                <span key={doc} className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold">
-                                  {doc}
+                              {(driver.documents ?? []).length === 0 ? (
+                                <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">
+                                  No documents
                                 </span>
-                              ))}
+                              ) : (
+                                (driver.documents ?? []).map((doc) => (
+                                  <button
+                                    key={`${driver.driver_id}-${doc.label}`}
+                                    type="button"
+                                    className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold transition hover:bg-slate-100 hover:text-slate-900"
+                                    onClick={() => {
+                                      setSelectedDocument({
+                                        label: doc.label,
+                                        url: resolveDocumentUrl(doc.url),
+                                      })
+                                      setDocumentLoadFailed(false)
+                                    }}
+                                  >
+                                    View {doc.label}
+                                  </button>
+                                ))
+                              )}
                             </div>
                           </td>
                           <td className="px-3 py-4">
@@ -496,6 +522,77 @@ export default function AdminDashboard() {
           )}
         </section>
       </main>
+
+      {selectedDocument && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+          onClick={() => setSelectedDocument(null)}
+        >
+          <div
+            className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Document Preview</p>
+                  <h3 className="mt-1 text-2xl font-black text-slate-900">{selectedDocument.label}</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={selectedDocument.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                  >
+                    Open Original
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <button
+                    type="button"
+                    className="rounded-full border border-slate-300 bg-white p-2 text-slate-600 transition hover:bg-slate-100"
+                    onClick={() => setSelectedDocument(null)}
+                    aria-label="Close document preview"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="bg-[radial-gradient(circle_at_top,_rgba(226,232,240,0.7),_rgba(248,250,252,1)_55%)] p-6">
+              <div className="flex min-h-[420px] items-center justify-center overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-inner">
+                {documentLoadFailed ? (
+                  <div className="flex max-w-md flex-col items-center px-6 py-12 text-center">
+                    <div className="mb-4 rounded-full bg-slate-100 p-4 text-slate-500">
+                      <ImageOff className="h-8 w-8" />
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900">Preview unavailable</h4>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      This file could not be rendered inside the dashboard. You can still open the original document in a new tab.
+                    </p>
+                    <a
+                      href={selectedDocument.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      Open Original
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                ) : (
+                  <img
+                    src={selectedDocument.url}
+                    alt={selectedDocument.label}
+                    className="max-h-[75vh] w-full object-contain"
+                    onError={() => setDocumentLoadFailed(true)}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

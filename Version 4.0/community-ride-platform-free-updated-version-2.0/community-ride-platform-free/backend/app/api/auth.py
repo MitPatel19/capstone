@@ -46,6 +46,24 @@ def get_or_create_driver_vehicle(db: Session, user_id: int) -> DriverVehicle:
     db.refresh(row)
     return row
 
+
+def require_active_city(db: Session, city_id: int) -> City:
+    city = db.scalar(select(City).where(City.id == city_id, City.is_active == True))
+    if not city:
+        raise HTTPException(404, "Selected city is not available")
+    return city
+
+
+def upsert_approved_city_selection(db: Session, user_id: int, city_id: int) -> DriverCitySelection:
+    sel = db.scalar(select(DriverCitySelection).where(DriverCitySelection.user_id == user_id))
+    if not sel:
+        sel = DriverCitySelection(user_id=user_id)
+        db.add(sel)
+    sel.approved_city_id = city_id
+    sel.pending_city_id = None
+    sel.approval_status = "approved"
+    return sel
+
 def rating_summary(db: Session, user_id: int) -> tuple[float,int]:
     rows = db.scalars(select(Rating).where(Rating.to_user_id == user_id)).all()
     if not rows:
@@ -75,6 +93,7 @@ def signup_rider(payload: SignupRiderIn, db: Session = Depends(get_db)):
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing:
         raise HTTPException(400, "Email already registered")
+    require_active_city(db, payload.city_id)
     u = User(
         role=UserRole.rider,
         name=payload.name,
@@ -87,6 +106,8 @@ def signup_rider(payload: SignupRiderIn, db: Session = Depends(get_db)):
     db.add(u)
     db.commit()
     db.refresh(u)
+    upsert_approved_city_selection(db, u.id, payload.city_id)
+    db.commit()
     return user_out(u)
 
 @router.post("/signup/driver", response_model=dict)
@@ -97,6 +118,7 @@ async def signup_driver(
     phone: str = Form(""),
     age: int = Form(...),
     is_student: bool = Form(...),
+    city_id: int = Form(...),
     license_file: UploadFile = File(...),
     id_file: UploadFile = File(...),
     insurance_file: UploadFile = File(...),
@@ -109,6 +131,7 @@ async def signup_driver(
     existing = db.scalar(select(User).where(User.email == email))
     if existing:
         raise HTTPException(400, "Email already registered")
+    require_active_city(db, city_id)
 
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     async def save_file(up: UploadFile) -> str:
@@ -145,6 +168,7 @@ async def signup_driver(
         insurance_path=insurance_path,
     )
     db.add(profile)
+    upsert_approved_city_selection(db, u.id, city_id)
     db.commit()
     return {"status": "pending", "message": "Account pending admin approval (within 24 hours)"}
 
@@ -374,7 +398,7 @@ async def update_driver_documents(
 
 
 @router.get("/cities", response_model=list[CityOut])
-def list_cities(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_cities(db: Session = Depends(get_db)):
     cities = db.scalars(select(City).where(City.is_active == True).order_by(City.name.asc())).all()
     return [CityOut(id=c.id, name=c.name, is_active=c.is_active) for c in cities]
 

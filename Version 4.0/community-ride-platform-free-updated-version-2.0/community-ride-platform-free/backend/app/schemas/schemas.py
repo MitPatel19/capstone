@@ -25,6 +25,7 @@ class SignupRiderIn(BaseModel):
     phone: str = ""
     age: int = 18
     is_student: bool = False
+    city_id: int
 
 class SignupDriverIn(BaseModel):
     name: str
@@ -33,6 +34,7 @@ class SignupDriverIn(BaseModel):
     phone: str = ""
     age: int
     is_student: bool
+    city_id: int
 
 class LoginIn(BaseModel):
     email: str

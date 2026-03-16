@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CarFront, Upload } from 'lucide-react'
 import { api } from '../api'
+
+type City = { id: number; name: string; is_active: boolean }
 
 function DocInput({ label, onPick }: { label: string; onPick: (file: File | null) => void }) {
   return (
@@ -22,17 +24,26 @@ export default function DriverSignup() {
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
   const [age, setAge] = useState(23)
+  const [cities, setCities] = useState<City[]>([])
+  const [cityId, setCityId] = useState(0)
   const [license, setLicense] = useState<File | null>(null)
   const [idFile, setIdFile] = useState<File | null>(null)
   const [insurance, setInsurance] = useState<File | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    api.get('/auth/cities')
+      .then((res) => setCities(res.data))
+      .catch(() => setCities([]))
+  }, [])
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
     setLoading(true)
     try {
+      if (!cityId) throw new Error('Please select your city')
       const fd = new FormData()
       fd.append('name', name)
       fd.append('email', email)
@@ -40,6 +51,7 @@ export default function DriverSignup() {
       fd.append('phone', phone)
       fd.append('age', String(age))
       fd.append('is_student', 'false')
+      fd.append('city_id', String(cityId))
       if (!license || !idFile || !insurance) throw new Error('Please upload all documents')
       fd.append('license_file', license)
       fd.append('id_file', idFile)
@@ -85,6 +97,24 @@ export default function DriverSignup() {
             <div>
               <label className="mb-2 block text-base font-bold">Age (23+)</label>
               <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base" type="number" min={23} value={age} onChange={(e) => setAge(Number(e.target.value || 23))} />
+            </div>
+            <div>
+              <label className="mb-2 block text-base font-bold">City Selection</label>
+              <select
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-brand-200"
+                value={cityId}
+                onChange={(e) => setCityId(Number(e.target.value))}
+              >
+                <option value={0}>Select your city</option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 text-sm text-slate-500">
+                This list uses the same cities added by the admin in City Dropdown Management.
+              </div>
             </div>
 
             <div className="border-t border-slate-200 pt-5">
