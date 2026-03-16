@@ -7,18 +7,20 @@ import { money } from '../utils'
 
 type Ride = {
   id: number
+  rider_id?: number
   pickup_text: string
   time_iso: string
   posted_price: number
   status: string
   bargain_price?: number | null
+  primary_rider_net_price?: number
   first_dropoff_text?: string
   driver_name?: string
   driver_rating?: number
   driver_vehicle?: string
 }
 type Metrics = { active_rides: number; total_rides: number; rating_avg: number }
-type Me = { name: string }
+type Me = { id: number; name: string }
 
 function StatCard({ label, value, icon }: { label: string; value: React.ReactNode; icon: React.ReactNode }) {
   return (
@@ -132,7 +134,7 @@ export default function RiderDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-5xl font-bold text-brand-600">{money(r.bargain_price ?? r.posted_price)}</div>
+                  <div className="text-5xl font-bold text-brand-600">{money(r.rider_id === me?.id ? (r.primary_rider_net_price ?? r.bargain_price ?? r.posted_price) : (r.bargain_price ?? r.posted_price))}</div>
                 </div>
                 <div className="mt-6 flex items-end justify-between">
                   <div className="inline-flex items-center gap-2 text-slate-600">
@@ -181,7 +183,7 @@ export default function RiderDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-5xl font-bold text-brand-600">{money(r.bargain_price ?? r.posted_price)}</div>
+                  <div className="text-5xl font-bold text-brand-600">{money(r.rider_id === me?.id ? (r.primary_rider_net_price ?? r.bargain_price ?? r.posted_price) : (r.bargain_price ?? r.posted_price))}</div>
                 </div>
                 <div className="mt-6 inline-flex items-center gap-2 text-slate-600">
                   <Clock3 className="h-5 w-5" />

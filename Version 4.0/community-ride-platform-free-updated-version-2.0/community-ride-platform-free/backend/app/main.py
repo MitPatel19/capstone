@@ -25,9 +25,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def ensure_runtime_schema():
+    with engine.begin() as conn:
+        cols = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(join_requests)")).fetchall()
+        }
+        if "primary_rider_credit" not in cols:
+            conn.execute(text("ALTER TABLE join_requests ADD COLUMN primary_rider_credit FLOAT DEFAULT 0.0"))
+        if "driver_bonus" not in cols:
+            conn.execute(text("ALTER TABLE join_requests ADD COLUMN driver_bonus FLOAT DEFAULT 0.0"))
+
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    ensure_runtime_schema()
     db = SessionLocal()
     try:
         ensure_seed(db)

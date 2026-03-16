@@ -12,6 +12,35 @@ from app.ws.manager import manager
 
 router = APIRouter(prefix="/rides", tags=["rides"])
 
+PRIMARY_RIDER_JOIN_SHARE = 0.35
+
+
+def money_round(value: float) -> float:
+    return round(float(value or 0.0) + 1e-9, 2)
+
+
+def base_ride_price(ride: Ride) -> float:
+    return money_round(ride.bargain_price if ride.bargain_price is not None else ride.posted_price)
+
+
+def compute_join_split(price: float) -> tuple[float, float]:
+    rider_credit = money_round(price * PRIMARY_RIDER_JOIN_SHARE)
+    driver_bonus = money_round(price - rider_credit)
+    return rider_credit, driver_bonus
+
+
+def accepted_join_metrics(db: Session, ride_id: int) -> tuple[list[JoinRequest], float, float, float]:
+    accepted_joins = db.scalars(
+        select(JoinRequest).where(
+            JoinRequest.ride_id == ride_id,
+            JoinRequest.status == JoinRequestStatus.accepted,
+        )
+    ).all()
+    total_joiner_price = money_round(sum(jr.price for jr in accepted_joins))
+    rider_discount_total = money_round(sum(jr.primary_rider_credit for jr in accepted_joins))
+    driver_bonus_total = money_round(sum(jr.driver_bonus for jr in accepted_joins))
+    return accepted_joins, total_joiner_price, rider_discount_total, driver_bonus_total
+
 def user_rating_avg(db: Session, user_id: int) -> float:
     rows = db.scalars(select(Rating.stars).where(Rating.to_user_id == user_id)).all()
     if not rows:
@@ -83,18 +112,18 @@ def ride_to_out(r: Ride, db: Session) -> RideOut:
     show_vehicle = r.status in (RideStatus.confirmed, RideStatus.in_progress, RideStatus.completed)
     sorted_stops = sorted(r.stops, key=lambda x: x.order_index)
     route_points = [s.dropoff_text for s in sorted_stops]
+    accepted_joins: list[JoinRequest] = []
+    total_joiner_price = 0.0
+    rider_discount_total = 0.0
+    driver_bonus_total = 0.0
     if r.status in (RideStatus.confirmed, RideStatus.in_progress, RideStatus.completed):
-        accepted_joins = db.scalars(
-            select(JoinRequest).where(
-                JoinRequest.ride_id == r.id,
-                JoinRequest.status == JoinRequestStatus.accepted,
-            )
-        ).all()
+        accepted_joins, total_joiner_price, rider_discount_total, driver_bonus_total = accepted_join_metrics(db, r.id)
         for jr in accepted_joins:
             route_points.append(jr.from_text)
             route_points.append(jr.to_text)
     optimized = optimize_stop_order(route_points)
     first_dropoff = optimized[0] if optimized else ""
+    ride_price = base_ride_price(r)
     return RideOut(
         id=r.id, rider_id=r.rider_id, driver_id=r.driver_id,
         pickup_text=r.pickup_text, time_iso=r.time_iso, posted_price=r.posted_price,
@@ -110,6 +139,12 @@ def ride_to_out(r: Ride, db: Session) -> RideOut:
         driver_rating=user_rating_avg(db, driver.id) if driver else 0.0,
         driver_vehicle=(vehicle_row.vehicle_details if (vehicle_row and show_vehicle) else ""),
         first_dropoff_text=first_dropoff,
+        accepted_joiner_count=len(accepted_joins),
+        total_joiner_price=total_joiner_price,
+        primary_rider_discount_total=rider_discount_total,
+        primary_rider_net_price=money_round(max(0.0, ride_price - rider_discount_total)),
+        driver_join_bonus_total=driver_bonus_total,
+        driver_total_earnings=money_round(ride_price + driver_bonus_total),
         stops=[{"dropoff_text": text, "order_index": idx} for idx, text in enumerate(optimized)]
     )
 
@@ -122,6 +157,8 @@ def join_to_out(jr: JoinRequest, db: Session) -> JoinRequestOut:
         from_text=jr.from_text,
         to_text=jr.to_text,
         price=jr.price,
+        primary_rider_credit=jr.primary_rider_credit,
+        driver_bonus=jr.driver_bonus,
         status=jr.status.value,
         driver_decision=jr.driver_decision,
         rider_decision=jr.rider_decision,
@@ -576,12 +613,15 @@ async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depend
         raise HTTPException(400, "You are the primary rider")
     if is_accepted_joiner(db, r.id, user.id):
         raise HTTPException(400, "You already joined this ride")
+    primary_rider_credit, driver_bonus = compute_join_split(payload.price)
     jr = JoinRequest(
         ride_id=ride_id,
         joiner_id=user.id,
         from_text=payload.from_text,
         to_text=payload.to_text,
         price=payload.price,
+        primary_rider_credit=primary_rider_credit,
+        driver_bonus=driver_bonus,
         status=JoinRequestStatus.pending
     )
     db.add(jr)
@@ -598,6 +638,7 @@ async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depend
         "join_request": {
             "id": jr.id, "ride_id": jr.ride_id, "joiner_id": jr.joiner_id,
             "from_text": jr.from_text, "to_text": jr.to_text, "price": jr.price,
+            "primary_rider_credit": jr.primary_rider_credit, "driver_bonus": jr.driver_bonus,
             "created_at": jr.created_at.isoformat()
         }
     }
@@ -606,6 +647,7 @@ async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depend
         "join_request": {
             "id": jr.id, "ride_id": jr.ride_id, "joiner_id": jr.joiner_id,
             "from_text": jr.from_text, "to_text": jr.to_text, "price": None,
+            "primary_rider_credit": jr.primary_rider_credit, "driver_bonus": None,
             "created_at": jr.created_at.isoformat()
         }
     }
@@ -615,6 +657,7 @@ async def request_join(ride_id: int, payload: JoinRequestIn, user: User = Depend
     return JoinRequestOut(
         id=jr.id, ride_id=jr.ride_id, joiner_id=jr.joiner_id,
         from_text=jr.from_text, to_text=jr.to_text, price=jr.price,
+        primary_rider_credit=jr.primary_rider_credit, driver_bonus=jr.driver_bonus,
         status=jr.status.value, driver_decision=jr.driver_decision, rider_decision=jr.rider_decision,
         created_at=jr.created_at.isoformat(),
         joiner_name=user.name,

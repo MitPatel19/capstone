@@ -14,9 +14,12 @@ type Ride = {
   first_dropoff_text?: string
   posted_price: number
   bargain_price?: number | null
+  primary_rider_net_price?: number
+  driver_total_earnings?: number
   status: string
   display_pickup_text?: string
   display_dropoff_text?: string
+  display_amount?: number
 }
 type Me = { id: number }
 
@@ -46,27 +49,41 @@ export default function Billing() {
         try {
           const jr = await api.get(`/rides/${r.id}/my_join_request`)
           if (!jr.data) return null
-          return { rideId: r.id, from: jr.data?.from_text || '', to: jr.data?.to_text || '' }
+          return { rideId: r.id, from: jr.data?.from_text || '', to: jr.data?.to_text || '', price: Number(jr.data?.price ?? 0) }
         } catch {
           return null
         }
       }))
-      const byRideId = new Map(joinedRows.filter((x): x is { rideId: number; from: string; to: string } => !!x).map((x) => [x.rideId, x]))
+      const byRideId = new Map(joinedRows.filter((x): x is { rideId: number; from: string; to: string; price: number } => !!x).map((x) => [x.rideId, x]))
       setCompletedRides(
         completed.flatMap((r) => {
           if (r.rider_id === uid) {
-            return [{ ...r, display_pickup_text: r.pickup_text, display_dropoff_text: r.first_dropoff_text || 'Destination' }]
+            return [{
+              ...r,
+              display_pickup_text: r.pickup_text,
+              display_dropoff_text: r.first_dropoff_text || 'Destination',
+              display_amount: Number(r.primary_rider_net_price ?? r.bargain_price ?? r.posted_price),
+            }]
           }
-          const jr = byRideId.get(r.id)
-          if (!jr || !jr.from || !jr.to) {
-            return []
-          }
-          return [{ ...r, display_pickup_text: jr.from, display_dropoff_text: jr.to }]
+        const jr = byRideId.get(r.id)
+        if (!jr || !jr.from || !jr.to) {
+          return []
+        }
+          return [{ ...r, display_pickup_text: jr.from, display_dropoff_text: jr.to, display_amount: Number(jr.price ?? 0) }]
         })
       )
       return
     }
-    setCompletedRides(completed.map((r) => ({ ...r, display_pickup_text: r.pickup_text, display_dropoff_text: r.first_dropoff_text || 'Destination' })))
+    setCompletedRides(
+      completed.map((r) => ({
+        ...r,
+        display_pickup_text: r.pickup_text,
+        display_dropoff_text: r.first_dropoff_text || 'Destination',
+        display_amount: role === 'driver'
+          ? Number(r.driver_total_earnings ?? r.bargain_price ?? r.posted_price)
+          : Number(r.primary_rider_net_price ?? r.bargain_price ?? r.posted_price),
+      }))
+    )
   }
 
   useEffect(() => {
@@ -79,7 +96,7 @@ export default function Billing() {
     window.location.href = '/payment-confirmation'
   }
 
-  const gross = useMemo(() => completedRides.reduce((sum, r) => sum + (r.bargain_price ?? r.posted_price), 0), [completedRides])
+  const gross = useMemo(() => completedRides.reduce((sum, r) => sum + Number(r.display_amount ?? r.bargain_price ?? r.posted_price), 0), [completedRides])
   const platformFees = useMemo(() => (summary?.fee_per_ride ?? 0) * completedRides.length, [completedRides.length, summary?.fee_per_ride])
   const net = useMemo(() => gross - platformFees, [gross, platformFees])
 
@@ -113,7 +130,7 @@ export default function Billing() {
                           </div>
                         </td>
                         <td className="px-3 py-3">{`${r.display_pickup_text || r.pickup_text} to ${r.display_dropoff_text || r.first_dropoff_text || 'Destination'}`}</td>
-                        <td className="px-3 py-3">{money(r.bargain_price ?? r.posted_price)}</td>
+                        <td className="px-3 py-3">{money(r.display_amount ?? r.bargain_price ?? r.posted_price)}</td>
                         <td className="px-3 py-3">{money(summary?.fee_per_ride ?? 0)}</td>
                       </tr>
                     ))}
@@ -194,7 +211,7 @@ export default function Billing() {
                       </div>
                     </td>
                     <td className="px-3 py-3">{`${r.display_pickup_text || r.pickup_text} to ${r.display_dropoff_text || r.first_dropoff_text || 'Destination'}`}</td>
-                    <td className="px-3 py-3">{money(r.bargain_price ?? r.posted_price)}</td>
+                    <td className="px-3 py-3">{money(r.display_amount ?? r.bargain_price ?? r.posted_price)}</td>
                     <td className="px-3 py-3">{money(summary?.fee_per_ride ?? 0)}</td>
                   </tr>
                 ))}

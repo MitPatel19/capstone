@@ -54,6 +54,16 @@ def rating_summary(db: Session, user_id: int) -> tuple[float,int]:
     return round(avg, 1), len(rows)
 
 
+def driver_join_bonus_total(db: Session, ride_id: int) -> float:
+    rows = db.scalars(
+        select(JoinRequest).where(
+            JoinRequest.ride_id == ride_id,
+            JoinRequest.status == JoinRequestStatus.accepted,
+        )
+    ).all()
+    return round(sum(float(r.driver_bonus or 0.0) for r in rows), 2)
+
+
 def user_out(u: User) -> UserOut:
     return UserOut(
         id=u.id, role=u.role.value, name=u.name, email=u.email, phone=u.phone,
@@ -255,6 +265,7 @@ def metrics(user: User = Depends(get_current_user), db: Session = Depends(get_db
         for r in rides:
             if r.created_at.strftime("%Y-%m-%d") == today:
                 todays_earnings += float(r.bargain_price or r.posted_price or 0.0)
+                todays_earnings += driver_join_bonus_total(db, r.id)
         todays_earnings = round(todays_earnings, 2)
 
     return MetricsOut(

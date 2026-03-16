@@ -70,6 +70,12 @@ class RideOut(BaseModel):
     driver_rating: float = 0.0
     driver_vehicle: str = ""
     first_dropoff_text: str = ""
+    accepted_joiner_count: int = 0
+    total_joiner_price: float = 0.0
+    primary_rider_discount_total: float = 0.0
+    primary_rider_net_price: float = 0.0
+    driver_join_bonus_total: float = 0.0
+    driver_total_earnings: float = 0.0
     stops: List[RideStopIn] = []
 
 class BargainIn(BaseModel):
@@ -103,6 +109,8 @@ class JoinRequestOut(BaseModel):
     from_text: str
     to_text: str
     price: float
+    primary_rider_credit: float = 0.0
+    driver_bonus: float = 0.0
     status: str
     driver_decision: Optional[bool]
     rider_decision: Optional[bool]

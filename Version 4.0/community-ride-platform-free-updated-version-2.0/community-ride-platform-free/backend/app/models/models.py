@@ -114,6 +114,8 @@ class JoinRequest(Base):
     from_text: Mapped[str] = mapped_column(String(255), default="")
     to_text: Mapped[str] = mapped_column(String(255), default="")
     price: Mapped[float] = mapped_column(Float, default=8.0)
+    primary_rider_credit: Mapped[float] = mapped_column(Float, default=0.0)
+    driver_bonus: Mapped[float] = mapped_column(Float, default=0.0)
 
     status: Mapped[JoinRequestStatus] = mapped_column(Enum(JoinRequestStatus), default=JoinRequestStatus.pending)
 

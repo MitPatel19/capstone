@@ -53,7 +53,7 @@ export default function Landing() {
 
       <div className="grid md:grid-cols-3 gap-4">
         <Card><CardContent className="p-6"><div className="font-bold">Bargaining with confirmation</div><div className="text-sm text-slate-600 mt-2">Ride confirms only when both Rider and Driver accept the final price.</div></CardContent></Card>
-        <Card><CardContent className="p-6"><div className="font-bold">Join ride pop-ups</div><div className="text-sm text-slate-600 mt-2">Join requests appear as popups only (no clutter). Driver sees join price, primary rider doesn’t.</div></CardContent></Card>
+        <Card><CardContent className="p-6"><div className="font-bold">Join ride rewards</div><div className="text-sm text-slate-600 mt-2">Each accepted join request gives the main rider a fare credit and the driver a detour bonus.</div></CardContent></Card>
         <Card><CardContent className="p-6"><div className="font-bold">Multi-stop drop-offs</div><div className="text-sm text-slate-600 mt-2">Add multiple stops and open Google Maps navigation for each location.</div></CardContent></Card>
       </div>
     </div>

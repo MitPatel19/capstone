@@ -24,6 +24,10 @@ type Ride = {
   driver_phone?: string
   driver_rating?: number
   driver_vehicle?: string
+  accepted_joiner_count?: number
+  primary_rider_discount_total?: number
+  primary_rider_net_price?: number
+  driver_join_bonus_total?: number
   stops?: { dropoff_text: string; order_index: number }[]
 }
 
@@ -36,6 +40,8 @@ type JoinReq = {
   joiner_name?: string
   joiner_rating?: number
   price?: number
+  primary_rider_credit?: number
+  driver_bonus?: number
   status?: string
   driver_decision?: boolean | null
   rider_decision?: boolean | null
@@ -123,9 +129,12 @@ export default function RideDetail() {
   }, [isPrimaryRider, offers, selectedDriverId])
   const currentPrice = useMemo(() => {
     if (!ride) return 0
+    if (isPrimaryRider && ride.status !== 'requested' && ride.status !== 'bargaining') {
+      return ride.primary_rider_net_price ?? (ride.bargain_price ?? ride.posted_price)
+    }
     if (currentOffer) return currentOffer.latest_price
     return ride.bargain_price ?? ride.posted_price
-  }, [ride, currentOffer])
+  }, [ride, currentOffer, isPrimaryRider])
   const canChat = useMemo(() => isPrimaryRider || alreadyJoined, [isPrimaryRider, alreadyJoined])
   const routeRows = useMemo(() => {
     if (!ride) return [] as RoutePoint[]
@@ -333,10 +342,19 @@ export default function RideDetail() {
                   <p className="text-xl font-semibold">{formatTime12h(ride.time_iso)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600">Price</p>
+                  <p className="text-sm text-slate-600">{isPrimaryRider ? 'Your Fare' : 'Price'}</p>
                   <p className="text-3xl font-bold text-brand-600">{money(currentPrice)}</p>
                 </div>
               </div>
+
+              {isPrimaryRider && (ride.primary_rider_discount_total ?? 0) > 0 && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="text-sm font-semibold text-blue-900">Shared ride reward active</div>
+                  <div className="mt-1 text-sm text-blue-800">
+                    Your fare dropped by {money(ride.primary_rider_discount_total ?? 0)} because {ride.accepted_joiner_count ?? 0} rider{(ride.accepted_joiner_count ?? 0) === 1 ? '' : 's'} joined this trip.
+                  </div>
+                </div>
+              )}
 
               {isPrimaryRider && ride.status === 'confirmed' && !ride.otp_verified && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
@@ -400,8 +418,8 @@ export default function RideDetail() {
 
               {isOtherRiderView && (ride.status === 'confirmed' || ride.status === 'in_progress') && !alreadyJoined && (
                 <div className="border-t pt-4">
-                  <div className="text-2xl font-black">Join This Ride</div>
-                  <div className="mt-2 text-sm text-slate-600">Minimum join price is $8. Only driver can see your offered price.</div>
+                <div className="text-2xl font-black">Join This Ride</div>
+                  <div className="mt-2 text-sm text-slate-600">Minimum join price is $8. Your amount is split automatically between the driver bonus and the main rider's fare credit.</div>
                   <div className="mt-3 grid gap-3">
                     <input
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
@@ -602,6 +620,7 @@ export default function RideDetail() {
                       </div>
                     </div>
                     <p className="mt-2 text-xs italic text-slate-500">(Price hidden from rider)</p>
+                    <p className="mt-2 text-sm text-blue-700">If accepted, this rider saves {money(jr.primary_rider_credit ?? 0)} on their fare.</p>
                     {isPrimaryRider && (
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <Button onClick={() => handleRiderJoinDecision(jr.id, true)} disabled={jr.rider_decision !== null || jr.status === 'accepted' || jr.status === 'rejected'}>

@@ -16,6 +16,8 @@ type Ride = {
   rider_name?: string
   rider_phone?: string
   rider_rating?: number
+  driver_join_bonus_total?: number
+  driver_total_earnings?: number
   first_dropoff_text?: string
   stops?: { dropoff_text: string; order_index: number }[]
 }
@@ -34,6 +36,8 @@ type JoinReq = {
   from_text: string
   to_text: string
   price: number
+  primary_rider_credit?: number
+  driver_bonus?: number
   joiner_name?: string
   joiner_rating?: number
   status?: string
@@ -291,6 +295,15 @@ export default function DriverRideDetail() {
               </div>
             </div>
 
+            {(ride.driver_join_bonus_total ?? 0) > 0 && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="text-sm font-semibold text-emerald-900">Shared ride bonus active</div>
+                <div className="mt-1 text-sm text-emerald-800">
+                  You are earning {money(ride.driver_join_bonus_total ?? 0)} extra from joined riders. Total ride earnings: {money(ride.driver_total_earnings ?? (ride.bargain_price ?? ride.posted_price))}.
+                </div>
+              </div>
+            )}
+
             {isPending && (
               <div className="mt-6 border-t border-slate-200 pt-6">
                 <div className="text-lg font-bold">Adjust Price (Bargain)</div>
@@ -476,10 +489,11 @@ export default function DriverRideDetail() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold text-emerald-600">+{money(jr.price)}</div>
-                        <div className="text-sm text-slate-500">Additional</div>
+                        <div className="text-3xl font-bold text-emerald-600">+{money(jr.driver_bonus ?? jr.price)}</div>
+                        <div className="text-sm text-slate-500">Your bonus</div>
                       </div>
                     </div>
+                    <div className="mt-2 text-sm text-blue-700">Primary rider saves {money(jr.primary_rider_credit ?? 0)} if this request is accepted.</div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <button
                         className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"

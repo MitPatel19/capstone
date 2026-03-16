@@ -13,6 +13,7 @@ type Ride = {
   posted_price: number
   status: string
   bargain_price?: number | null
+  driver_total_earnings?: number
   driver_id?: number | null
   first_dropoff_text?: string
   rider_name?: string
@@ -56,7 +57,7 @@ function RideCard({ ride, onOpen }: { ride: Ride; onOpen: () => void }) {
           <h3 className="text-xl font-black">{ride.rider_name || `Ride #${ride.id}`}</h3>
           {statusPill(ride.status)}
         </div>
-        <div className="text-3xl font-bold text-emerald-600">{money(ride.bargain_price ?? ride.posted_price)}</div>
+        <div className="text-3xl font-bold text-emerald-600">{money(ride.driver_total_earnings ?? ride.bargain_price ?? ride.posted_price)}</div>
       </div>
 
       <div className="mt-2 inline-flex items-center gap-1 text-amber-500">
