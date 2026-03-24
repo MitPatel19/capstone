@@ -38,7 +38,7 @@ export default function Billing() {
   const [completedRides, setCompletedRides] = useState<Ride[]>([])
 
   async function load() {
-    const [b, h, s, rides, me] = await Promise.all([api.get('/billing/me'), api.get('/billing/history'), api.get('/billing/summary'), api.get('/rides/me'), api.get('/auth/me')])
+    const [b, h, s, rides, me] = await Promise.all([api.get('/billing/me'), api.get('/billing/history'), api.get('/billing/summary'), api.get('/billing/rides'), api.get('/auth/me')])
     setBill(b.data)
     setHistory(h.data)
     setSummary(s.data)

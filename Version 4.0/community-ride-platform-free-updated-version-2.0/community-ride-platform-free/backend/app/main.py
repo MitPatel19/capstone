@@ -66,6 +66,13 @@ def ensure_runtime_schema():
         if "license_expiry_source" not in driver_profile_cols:
             conn.execute(text("ALTER TABLE driver_profiles ADD COLUMN license_expiry_source VARCHAR(40) DEFAULT 'manual'"))
 
+        ride_cols = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(rides)")).fetchall()
+        }
+        if "completed_at" not in ride_cols:
+            conn.execute(text("ALTER TABLE rides ADD COLUMN completed_at DATETIME"))
+
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)

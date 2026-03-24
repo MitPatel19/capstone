@@ -89,6 +89,7 @@ class Ride(Base):
     otp_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     stops: Mapped[list["RideStop"]] = relationship(back_populates="ride", cascade="all, delete-orphan")
     messages: Mapped[list["Message"]] = relationship(back_populates="ride", cascade="all, delete-orphan")

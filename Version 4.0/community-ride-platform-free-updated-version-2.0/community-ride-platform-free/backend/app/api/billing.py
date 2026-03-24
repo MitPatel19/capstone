@@ -6,10 +6,33 @@ from datetime import datetime
 from app.db.session import get_db
 from app.core.auth import get_current_user, require_role
 from app.models import User, UserRole, Ride, RideStatus, JoinRequest, JoinRequestStatus, PlatformFee, BillingMonth, BillingLineItem
-from app.schemas import BillOut, BillItemOut, PayBillOut
+from app.schemas import BillOut, BillItemOut, PayBillOut, RideOut
 from app.services.utils import month_str
+from app.api.rides import ride_to_out
 
 router = APIRouter(prefix="/billing", tags=["billing"])
+
+
+@router.get("/rides", response_model=list[RideOut])
+def billing_rides(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rides = db.scalars(select(Ride).where(Ride.status == RideStatus.completed).order_by(Ride.id.desc())).all()
+    joined_ride_ids = set(
+        db.scalars(
+            select(JoinRequest.ride_id).where(
+                JoinRequest.joiner_id == user.id,
+                JoinRequest.status == JoinRequestStatus.accepted,
+            )
+        ).all()
+    )
+
+    if user.role == UserRole.driver:
+        relevant = [r for r in rides if r.driver_id == user.id]
+    elif user.role == UserRole.rider:
+        relevant = [r for r in rides if r.rider_id == user.id or r.id in joined_ride_ids]
+    else:
+        relevant = rides
+
+    return [ride_to_out(r, db) for r in relevant]
 
 @router.get("/summary", response_model=dict)
 def my_month_summary(user: User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
-from datetime import datetime
+from datetime import datetime, timedelta
 import random, string
 
 from app.db.session import get_db
@@ -13,6 +13,7 @@ from app.ws.manager import manager
 router = APIRouter(prefix="/rides", tags=["rides"])
 
 PRIMARY_RIDER_JOIN_SHARE = 0.35
+DRIVER_COMPLETED_RIDE_RETENTION_HOURS = 24
 
 
 def money_round(value: float) -> float:
@@ -231,6 +232,12 @@ def my_rides(user: User = Depends(get_current_user), db: Session = Depends(get_d
         rides = sorted(by_id.values(), key=lambda x: x.id, reverse=True)
     elif user.role == UserRole.driver:
         rides = db.scalars(select(Ride).where(Ride.driver_id == user.id).order_by(Ride.id.desc())).all()
+        cutoff = datetime.utcnow() - timedelta(hours=DRIVER_COMPLETED_RIDE_RETENTION_HOURS)
+        rides = [
+            r for r in rides
+            if r.status != RideStatus.completed
+            or (r.completed_at or r.created_at) >= cutoff
+        ]
     else:
         rides = db.scalars(select(Ride).order_by(Ride.id.desc()).limit(100)).all()
     return [ride_to_out(r, db) for r in rides]
@@ -802,6 +809,7 @@ async def complete_ride(ride_id: int, user: User = Depends(require_role(UserRole
     if r.status != RideStatus.in_progress:
         raise HTTPException(400, "Ride not in progress")
     r.status = RideStatus.completed
+    r.completed_at = datetime.utcnow()
     db.commit()
     participant_ids = {r.rider_id}
     if r.driver_id:
