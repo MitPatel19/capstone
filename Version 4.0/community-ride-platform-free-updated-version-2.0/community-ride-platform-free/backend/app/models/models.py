@@ -39,6 +39,12 @@ class User(Base):
     age: Mapped[int] = mapped_column(Integer, default=18)
 
     status: Mapped[AccountStatus] = mapped_column(Enum(AccountStatus), default=AccountStatus.active)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_verification_token_hash: Mapped[str] = mapped_column(String(255), default="")
+    email_verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    password_reset_token_hash: Mapped[str] = mapped_column(String(255), default="")
+    password_reset_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     driver_profile: Mapped["DriverProfile"] = relationship(back_populates="user", uselist=False)

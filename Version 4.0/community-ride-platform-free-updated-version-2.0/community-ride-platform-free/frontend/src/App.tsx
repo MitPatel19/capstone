@@ -9,6 +9,10 @@ import SignupRole from './pages/SignupRole'
 import RiderSignup from './pages/RiderSignup'
 import DriverSignup from './pages/DriverSignup'
 import PendingApproval from './pages/PendingApproval'
+import CheckEmail from './pages/CheckEmail'
+import VerifyEmail from './pages/VerifyEmail'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import RiderDashboard from './pages/RiderDashboard'
 import DriverDashboard from './pages/DriverDashboard'
 import DriverRideDetail from './pages/DriverRideDetail'
@@ -135,6 +139,10 @@ export default function App() {
         <Route path="/signup/rider" element={<RiderSignup />} />
         <Route path="/signup/driver" element={<DriverSignup />} />
         <Route path="/pending" element={<PendingApproval />} />
+        <Route path="/check-email" element={<CheckEmail />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route path="/rider" element={<Protected role="rider"><RiderDashboard /></Protected>} />
         <Route path="/driver" element={<Protected role="driver"><DriverDashboard /></Protected>} />

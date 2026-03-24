@@ -28,6 +28,24 @@ app.add_middleware(
 
 def ensure_runtime_schema():
     with engine.begin() as conn:
+        user_cols = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        }
+        if "email_verified" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT 1"))
+        if "email_verification_token_hash" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verification_token_hash VARCHAR(255) DEFAULT ''"))
+        if "email_verification_sent_at" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verification_sent_at DATETIME"))
+        if "password_reset_token_hash" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_reset_token_hash VARCHAR(255) DEFAULT ''"))
+        if "password_reset_sent_at" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_reset_sent_at DATETIME"))
+        if "password_reset_expires_at" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_reset_expires_at DATETIME"))
+        conn.execute(text("UPDATE users SET email_verified = 1 WHERE email_verified IS NULL"))
+
         cols = {
             row[1]
             for row in conn.execute(text("PRAGMA table_info(join_requests)")).fetchall()

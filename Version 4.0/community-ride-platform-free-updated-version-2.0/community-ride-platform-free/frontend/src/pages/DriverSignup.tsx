@@ -59,8 +59,14 @@ export default function DriverSignup() {
       fd.append('license_file', license)
       fd.append('id_file', idFile)
       fd.append('insurance_file', insurance)
-      await api.post('/auth/signup/driver', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      nav('/pending')
+      const res = await api.post('/auth/signup/driver', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const params = new URLSearchParams({
+        mode: 'verify',
+        role: 'driver',
+        email,
+      })
+      if (res.data?.debug_url) params.set('debug_url', res.data.debug_url)
+      nav(`/check-email?${params.toString()}`)
     } catch (e: any) {
       setErr(e?.response?.data?.detail ?? e?.message ?? 'Signup failed')
     } finally {

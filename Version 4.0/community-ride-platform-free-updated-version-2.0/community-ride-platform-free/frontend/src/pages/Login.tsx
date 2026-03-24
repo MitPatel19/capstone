@@ -17,11 +17,14 @@ export default function Login() {
   const [password, setPassword] = useState(q.get('role') === 'admin' ? 'Mit@2020' : '')
   const [role, setRole] = useState<'rider'|'driver'|'admin'>((q.get('role') as any) || 'rider')
   const [err, setErr] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
+    setInfo(null)
     setLoading(true)
     try {
       const res = await api.post('/auth/login', { email, password, role })
@@ -31,6 +34,25 @@ export default function Login() {
       setErr(e?.response?.data?.detail ?? 'Login failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function resendVerification() {
+    setResending(true)
+    setErr(null)
+    setInfo(null)
+    try {
+      const res = await api.post('/auth/resend-verification', { email })
+      const debugUrl = res.data?.debug_url
+      setInfo(res.data?.message ?? 'Verification email sent.')
+      if (debugUrl) {
+        nav(`/check-email?mode=verify&role=${role}&email=${encodeURIComponent(email)}&debug_url=${encodeURIComponent(debugUrl)}`)
+        return
+      }
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail ?? 'Unable to resend verification email')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -63,10 +85,19 @@ export default function Login() {
                 ))}
               </div>
             </div>
+            {info && <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">{info}</div>}
             {err && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">{err}</div>}
+            {err?.toLowerCase().includes('email not verified') && (
+              <Button type="button" variant="secondary" className="w-full" disabled={resending || !email.trim()} onClick={resendVerification}>
+                {resending ? 'Sending verification...' : 'Resend Verification Email'}
+              </Button>
+            )}
             <Button className="w-full" disabled={loading}>{loading ? 'Signing in...' : 'Login'}</Button>
             <div className="text-sm text-slate-600">
               No account? <button className="font-semibold text-brand-700 hover:underline" type="button" onClick={()=>nav('/signup')}>Sign up</button>
+            </div>
+            <div className="text-sm text-slate-600">
+              Forgot your password? <button className="font-semibold text-brand-700 hover:underline" type="button" onClick={()=>nav('/forgot-password')}>Reset it</button>
             </div>
           </form>
         </CardContent>

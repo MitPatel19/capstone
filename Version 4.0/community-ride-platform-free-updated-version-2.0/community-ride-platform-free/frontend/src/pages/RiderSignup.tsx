@@ -31,8 +31,14 @@ export default function RiderSignup() {
     setErr(null); setLoading(true)
     try{
       if (!cityId) throw new Error('Please select your city')
-      await api.post('/auth/signup/rider',{name,email,password,phone,age,is_student:isStudent,city_id: cityId})
-      nav('/login?role=rider')
+      const res = await api.post('/auth/signup/rider',{name,email,password,phone,age,is_student:isStudent,city_id: cityId})
+      const params = new URLSearchParams({
+        mode: 'verify',
+        role: 'rider',
+        email,
+      })
+      if (res.data?.debug_url) params.set('debug_url', res.data.debug_url)
+      nav(`/check-email?${params.toString()}`)
     }catch(e:any){
       setErr(e?.response?.data?.detail ?? e?.message ?? 'Signup failed')
     }finally{ setLoading(false) }

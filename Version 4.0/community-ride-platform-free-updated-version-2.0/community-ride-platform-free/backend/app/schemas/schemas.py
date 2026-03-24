@@ -41,6 +41,16 @@ class LoginIn(BaseModel):
     password: str
     role: Role
 
+class ForgotPasswordIn(BaseModel):
+    email: str
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6)
+
+class ResendVerificationIn(BaseModel):
+    email: str
+
 class RideStopIn(BaseModel):
     dropoff_text: str
     order_index: int
@@ -268,3 +278,10 @@ class NotificationOut(BaseModel):
     action_path: str = ""
     is_read: bool
     created_at: str
+
+
+class AuthActionOut(BaseModel):
+    status: str
+    message: str
+    email_sent: bool = False
+    debug_url: Optional[str] = None
