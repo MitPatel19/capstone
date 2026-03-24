@@ -24,11 +24,19 @@ type User = {
 }
 
 type FlaggedReport = {
-  id: string
-  type: string
-  reporter: string
-  reported: string
-  date: string
+  id: number
+  target_type: string
+  status: string
+  category: string
+  subject: string
+  description: string
+  reporter_name: string
+  reported_name: string
+  ride_id?: number | null
+  attachment_url?: string
+  admin_note?: string
+  created_at: string
+  resolved_at?: string | null
 }
 
 type City = {
@@ -52,11 +60,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'users', label: 'User Management' },
   { key: 'fees', label: 'Platform Fees' },
   { key: 'reports', label: 'Reports & Flags' },
-]
-
-const SAMPLE_REPORTS: FlaggedReport[] = [
-  { id: 'sample-1', type: 'Driver Behavior', reporter: 'John Smith', reported: 'Tom Brown', date: '2026-02-02' },
-  { id: 'sample-2', type: 'Payment Issue', reporter: 'Lisa Wong', reported: 'System', date: '2026-02-03' },
 ]
 
 function formatDate(dateLike: string) {
@@ -87,6 +90,9 @@ export default function AdminDashboard() {
   const [msg, setMsg] = useState<string | null>(null)
   const [selectedDocument, setSelectedDocument] = useState<{ label: string; url: string } | null>(null)
   const [documentLoadFailed, setDocumentLoadFailed] = useState(false)
+  const [selectedReport, setSelectedReport] = useState<FlaggedReport | null>(null)
+  const [reportStatus, setReportStatus] = useState('open')
+  const [reportNote, setReportNote] = useState('')
 
   async function load() {
     setLoading(true)
@@ -126,7 +132,7 @@ export default function AdminDashboard() {
     }
   }
 
-  const reportRows = reports.length ? reports : SAMPLE_REPORTS
+  const reportRows = reports
 
   const stats = useMemo(
     () => [
@@ -189,6 +195,13 @@ export default function AdminDashboard() {
 
   async function rejectCityRequest(userId: number) {
     await api.post(`/admin/cities/requests/${userId}/reject`)
+    await load()
+  }
+
+  async function saveReportReview() {
+    if (!selectedReport) return
+    await api.post(`/admin/reports/${selectedReport.id}`, { status: reportStatus, admin_note: reportNote })
+    setSelectedReport(null)
     await load()
   }
 
@@ -506,42 +519,132 @@ export default function AdminDashboard() {
           {!loading && activeTab === 'reports' && (
             <div>
               <h2 className="text-2xl font-black">Flagged Reports</h2>
-              <p className="mt-2 text-base text-slate-600">Review user-reported issues</p>
+              <p className="mt-2 text-base text-slate-600">Review ride reports, user reports, and system issues submitted by users.</p>
 
-              <div className="mt-8 overflow-x-auto">
-                <table className="min-w-full text-left">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-sm font-bold">
-                      <th className="px-3 py-4">Type</th>
-                      <th className="px-3 py-4">Reporter</th>
-                      <th className="px-3 py-4">Reported</th>
-                      <th className="px-3 py-4">Date</th>
-                      <th className="px-3 py-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportRows.map((report) => (
-                      <tr key={report.id} className="border-b border-slate-200 text-sm">
-                        <td className="px-3 py-4">
-                          <span className="rounded-full bg-rose-600 px-3 py-1 text-xs font-bold text-white">{report.type}</span>
-                        </td>
-                        <td className="px-3 py-4">{report.reporter}</td>
-                        <td className="px-3 py-4">{report.reported}</td>
-                        <td className="px-3 py-4">{report.date}</td>
-                        <td className="px-3 py-4">
-                          <button className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50">
-                            Review
-                          </button>
-                        </td>
+              {reportRows.length === 0 ? (
+                <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">No reports submitted yet.</div>
+              ) : (
+                <div className="mt-8 overflow-x-auto">
+                  <table className="min-w-full text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-sm font-bold">
+                        <th className="px-3 py-4">Target</th>
+                        <th className="px-3 py-4">Category</th>
+                        <th className="px-3 py-4">Reporter</th>
+                        <th className="px-3 py-4">Status</th>
+                        <th className="px-3 py-4">Date</th>
+                        <th className="px-3 py-4">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {reportRows.map((report) => (
+                        <tr key={report.id} className="border-b border-slate-200 text-sm">
+                          <td className="px-3 py-4">
+                            <div className="font-semibold capitalize">{report.target_type}</div>
+                            <div className="text-xs text-slate-500">{report.reported_name || (report.target_type === 'system' ? 'System' : report.ride_id ? `Ride #${report.ride_id}` : '-')}</div>
+                          </td>
+                          <td className="px-3 py-4">
+                            <div className="rounded-full bg-rose-600 px-3 py-1 text-xs font-bold text-white inline-flex">{report.category.split('_').join(' ')}</div>
+                            <div className="mt-1 text-xs text-slate-500">{report.subject}</div>
+                          </td>
+                          <td className="px-3 py-4">{report.reporter_name}</td>
+                          <td className="px-3 py-4">
+                            <span className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold capitalize">{report.status.split('_').join(' ')}</span>
+                          </td>
+                          <td className="px-3 py-4">{formatDate(report.created_at)}</td>
+                          <td className="px-3 py-4">
+                            <button
+                              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                              onClick={() => {
+                                setSelectedReport(report)
+                                setReportStatus(report.status)
+                                setReportNote(report.admin_note || '')
+                              }}
+                            >
+                              Review
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </section>
       </main>
+
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4" onClick={() => setSelectedReport(null)}>
+          <div className="w-full max-w-3xl rounded-3xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-2xl font-black">{selectedReport.subject}</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {selectedReport.reporter_name} reported {selectedReport.reported_name || (selectedReport.target_type === 'system' ? 'System' : selectedReport.target_type)}
+                </div>
+              </div>
+              <button className="rounded-full border border-slate-300 bg-white p-2" onClick={() => setSelectedReport(null)}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <div><b>Category:</b> {selectedReport.category.split('_').join(' ')}</div>
+                <div><b>Target:</b> {selectedReport.target_type}</div>
+                {selectedReport.ride_id ? <div><b>Ride:</b> #{selectedReport.ride_id}</div> : null}
+                <div><b>Submitted:</b> {formatDate(selectedReport.created_at)}</div>
+              </div>
+              <div>
+                <div className="mb-2 text-sm font-bold text-slate-700">Description</div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 whitespace-pre-wrap">{selectedReport.description}</div>
+              </div>
+              {selectedReport.attachment_url && (
+                <div className="flex gap-3">
+                  <button
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                    onClick={() => {
+                      setSelectedDocument({ label: `Report #${selectedReport.id} attachment`, url: resolveDocumentUrl(selectedReport.attachment_url || '') })
+                      setDocumentLoadFailed(false)
+                    }}
+                  >
+                    View Attachment
+                  </button>
+                </div>
+              )}
+              <div>
+                <label className="mb-2 block text-sm font-bold">Status</label>
+                <select className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" value={reportStatus} onChange={(e) => setReportStatus(e.target.value)}>
+                  <option value="open">Open</option>
+                  <option value="in_review">In Review</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="dismissed">Dismissed</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-bold">Admin Note</label>
+                <textarea
+                  rows={4}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={reportNote}
+                  onChange={(e) => setReportNote(e.target.value)}
+                  placeholder="Add internal resolution notes"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={saveReportReview}>
+                  Save Review
+                </button>
+                <button className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={() => setSelectedReport(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedDocument && (
         <div

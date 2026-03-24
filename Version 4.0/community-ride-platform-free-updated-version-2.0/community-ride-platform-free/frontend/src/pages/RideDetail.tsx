@@ -543,6 +543,15 @@ export default function RideDetail() {
               <Button className="w-full" variant="ghost" onClick={() => (ride.driver_phone ? (window.location.href = `tel:${ride.driver_phone}`) : null)}>
                 Call Driver
               </Button>
+              {ride.driver_id && (
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => nav(`/report?target=user&reportedUserId=${ride.driver_id}&rideId=${ride.id}&reportedName=${encodeURIComponent(ride.driver_name || 'Driver')}&label=${encodeURIComponent(`Report driver for ride #${ride.id}`)}`)}
+                >
+                  Report Driver
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -556,6 +565,13 @@ export default function RideDetail() {
                   Give Feedback
                 </Button>
               )}
+              <Button
+                className="w-full"
+                variant="secondary"
+                onClick={() => nav(`/report?target=ride&rideId=${ride.id}&label=${encodeURIComponent(`Report ride #${ride.id}`)}`)}
+              >
+                Report Ride
+              </Button>
               {isPrimaryRider && (
                 <Button variant="danger" className="w-full" onClick={() => setShowCancelDialog(true)}>
                   <X className="mr-2 h-4 w-4" />

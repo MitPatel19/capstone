@@ -285,3 +285,27 @@ class AuthActionOut(BaseModel):
     message: str
     email_sent: bool = False
     debug_url: Optional[str] = None
+
+
+class SupportReportOut(BaseModel):
+    id: int
+    target_type: str
+    status: str
+    category: str
+    subject: str
+    description: str
+    reporter_user_id: int
+    reporter_name: str = ""
+    reported_user_id: Optional[int] = None
+    reported_name: str = ""
+    ride_id: Optional[int] = None
+    attachment_url: str = ""
+    admin_note: str = ""
+    created_at: str
+    updated_at: str
+    resolved_at: Optional[str] = None
+
+
+class SupportReportUpdateIn(BaseModel):
+    status: str
+    admin_note: str = ""

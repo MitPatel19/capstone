@@ -18,6 +18,19 @@ class DriverApprovalStatus(str, enum.Enum):
     approved = "approved"
     rejected = "rejected"
 
+
+class SupportReportTargetType(str, enum.Enum):
+    ride = "ride"
+    user = "user"
+    system = "system"
+
+
+class SupportReportStatus(str, enum.Enum):
+    open = "open"
+    in_review = "in_review"
+    resolved = "resolved"
+    dismissed = "dismissed"
+
 class RideStatus(str, enum.Enum):
     requested = "requested"
     bargaining = "bargaining"
@@ -285,3 +298,22 @@ class Notification(Base):
     action_path: Mapped[str] = mapped_column(String(255), default="")
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SupportReport(Base):
+    __tablename__ = "support_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reporter_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    target_type: Mapped[SupportReportTargetType] = mapped_column(Enum(SupportReportTargetType), index=True)
+    status: Mapped[SupportReportStatus] = mapped_column(Enum(SupportReportStatus), default=SupportReportStatus.open, index=True)
+    category: Mapped[str] = mapped_column(String(80), default="general")
+    subject: Mapped[str] = mapped_column(String(160))
+    description: Mapped[str] = mapped_column(Text, default="")
+    ride_id: Mapped[int | None] = mapped_column(ForeignKey("rides.id"), nullable=True, index=True)
+    reported_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    attachment_path: Mapped[str] = mapped_column(String(512), default="")
+    admin_note: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -8,6 +8,7 @@ import { wsClient } from '../ws'
 
 type Ride = {
   id: number
+  rider_id: number
   pickup_text: string
   time_iso: string
   posted_price: number
@@ -418,6 +419,12 @@ export default function DriverRideDetail() {
               <a href={`tel:${ride.rider_phone || ''}`} className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold hover:bg-slate-50">
                 Call Rider
               </a>
+              <button
+                className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+                onClick={() => nav(`/report?target=user&reportedUserId=${ride.rider_id}&rideId=${ride.id}&reportedName=${encodeURIComponent(ride.rider_name || 'Rider')}&label=${encodeURIComponent(`Report rider for ride #${ride.id}`)}`)}
+              >
+                Report Rider
+              </button>
             </article>
 
             {isPending && (
@@ -452,6 +459,12 @@ export default function DriverRideDetail() {
                 <div className="mt-6 space-y-3">
                   <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white hover:bg-brand-700" onClick={() => nav(`/feedback/${ride.id}`)}>
                     Give Feedback
+                  </button>
+                  <button
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+                    onClick={() => nav(`/report?target=ride&rideId=${ride.id}&label=${encodeURIComponent(`Report ride #${ride.id}`)}`)}
+                  >
+                    Report Ride
                   </button>
                 </div>
               </article>

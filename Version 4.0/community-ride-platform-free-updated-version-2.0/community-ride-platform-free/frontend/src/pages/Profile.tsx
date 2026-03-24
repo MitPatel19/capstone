@@ -450,6 +450,18 @@ export default function Profile() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <div className="font-bold">Support and Reporting</div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm text-slate-600">Report bugs, payment issues, account problems, or anything else that should go to the admin team.</div>
+                <Button variant="secondary" onClick={() => window.location.href = '/report?target=system&label=Report%20a%20system%20issue%20or%20bug'}>
+                  Report System Issue
+                </Button>
+              </CardContent>
+            </Card>
+
             <div className="flex gap-3">
               <Button variant="ghost" onClick={load}>
                 Cancel

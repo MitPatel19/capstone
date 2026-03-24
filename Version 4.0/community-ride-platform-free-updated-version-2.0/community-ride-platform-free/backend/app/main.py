@@ -10,6 +10,7 @@ from app.api.auth import router as auth_router
 from app.api.rides import router as rides_router
 from app.api.admin import router as admin_router
 from app.api.billing import router as billing_router
+from app.api.reports import router as reports_router
 from app.ws.manager import manager
 from app.core.auth import decode_token
 
@@ -87,6 +88,7 @@ app.include_router(auth_router)
 app.include_router(rides_router)
 app.include_router(admin_router)
 app.include_router(billing_router)
+app.include_router(reports_router)
 
 @app.get("/health")
 def health():

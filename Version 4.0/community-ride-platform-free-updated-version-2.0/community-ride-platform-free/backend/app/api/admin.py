@@ -7,9 +7,10 @@ import os
 from app.db.session import get_db
 from app.core.auth import require_role
 from app.core.settings import settings
-from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, AccountStatus, PlatformFee, UserProfile, Rating, Cancellation, City, DriverCitySelection
-from app.schemas import PlatformFeeOut, PlatformFeeIn, UserOut, CityOut, CityIn
+from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, AccountStatus, PlatformFee, UserProfile, Rating, City, DriverCitySelection, SupportReport, SupportReportStatus
+from app.schemas import PlatformFeeOut, PlatformFeeIn, UserOut, CityOut, CityIn, SupportReportOut, SupportReportUpdateIn
 from app.services.license_monitor import sync_driver_license_notifications
+from app.api.reports import report_to_out
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -94,41 +95,30 @@ def list_users(user: User = Depends(require_role(UserRole.admin)), db: Session =
     ratings_by_user_id = {int(uid): float(avg) for uid, avg in rating_rows}
     return [user_out(u, ratings_by_user_id.get(u.id, 0.0)) for u in users]
 
-@router.get("/reports")
+@router.get("/reports", response_model=list[SupportReportOut])
 def flagged_reports(user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):
-    reports = []
+    reports = db.scalars(select(SupportReport).order_by(SupportReport.created_at.desc()).limit(200)).all()
+    return [report_to_out(r, db) for r in reports]
 
-    low_rating_rows = db.execute(
-        select(Rating, User.name, User.role)
-        .join(User, Rating.to_user_id == User.id)
-        .where(Rating.stars <= 2)
-        .order_by(Rating.created_at.desc())
-        .limit(20)
-    ).all()
-    for rating, reported_name, reported_role in low_rating_rows:
-        reporter = db.scalar(select(User).where(User.id == rating.from_user_id))
-        role_value = reported_role.value if hasattr(reported_role, "value") else str(reported_role)
-        reports.append({
-            "id": f"rating-{rating.id}",
-            "type": "Driver Behavior" if role_value == UserRole.driver.value else "User Behavior",
-            "reporter": reporter.name if reporter else "Unknown",
-            "reported": reported_name,
-            "date": rating.created_at.date().isoformat(),
-        })
 
-    cancellation_rows = db.scalars(select(Cancellation).order_by(Cancellation.created_at.desc()).limit(20)).all()
-    for cancellation in cancellation_rows:
-        reporter = db.scalar(select(User).where(User.id == cancellation.by_user_id))
-        reports.append({
-            "id": f"cancel-{cancellation.id}",
-            "type": "Payment Issue",
-            "reporter": reporter.name if reporter else "Unknown",
-            "reported": "System",
-            "date": cancellation.created_at.date().isoformat(),
-        })
-
-    reports.sort(key=lambda r: r["date"], reverse=True)
-    return reports[:50]
+@router.post("/reports/{report_id}", response_model=SupportReportOut)
+def update_report(report_id: int, payload: SupportReportUpdateIn, user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):
+    report = db.scalar(select(SupportReport).where(SupportReport.id == report_id))
+    if not report:
+        raise HTTPException(404, "Report not found")
+    try:
+        report.status = SupportReportStatus(payload.status)
+    except Exception:
+        raise HTTPException(400, "Invalid report status")
+    report.admin_note = (payload.admin_note or "").strip()
+    report.updated_at = datetime.utcnow()
+    if report.status in (SupportReportStatus.resolved, SupportReportStatus.dismissed):
+        report.resolved_at = datetime.utcnow()
+    else:
+        report.resolved_at = None
+    db.commit()
+    db.refresh(report)
+    return report_to_out(report, db)
 
 @router.post("/users/{uid}/disable")
 def disable_user(uid: int, user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):

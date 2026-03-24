@@ -23,6 +23,7 @@ import Billing from './pages/Billing'
 import PaymentConfirmation from './pages/PaymentConfirmation'
 import Feedback from './pages/Feedback'
 import Profile from './pages/Profile'
+import ReportIssue from './pages/ReportIssue'
 
 type Toast = { id: string; title: string; body: string; action?: { label: string; to: string }; notificationId?: number }
 
@@ -155,6 +156,7 @@ export default function App() {
         <Route path="/payment-confirmation" element={<PaymentConfirmation />} />
         <Route path="/feedback/:rideId" element={<Feedback />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/report" element={<ReportIssue />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
