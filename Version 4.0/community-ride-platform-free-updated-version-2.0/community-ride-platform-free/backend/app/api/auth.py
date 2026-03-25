@@ -16,6 +16,7 @@ from app.schemas import Token, ProfileOut, ProfileUpdateIn, ChangePasswordIn, Me
 from app.schemas import SignupRiderIn, LoginIn, ForgotPasswordIn, ResetPasswordIn, ResendVerificationIn
 from app.schemas import CityOut, DriverCityOut, DriverCitySelectIn, RiderDefaultRouteOut, RiderDefaultRouteIn
 from app.services.emailer import send_email
+from app.services.billing import ensure_user_can_change_city, sync_billing_notifications
 from app.services.license_monitor import parse_license_expiry_date, sync_driver_license_notifications
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -281,6 +282,7 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
         prof = user.driver_profile
         if not prof or prof.approval_status != DriverApprovalStatus.approved:
             raise HTTPException(403, "Driver account not approved yet")
+    sync_billing_notifications(db, user.id)
     token = create_access_token(subject=user.email, role=user.role.value, user_id=user.id)
     return Token(access_token=token)
 
@@ -368,6 +370,7 @@ def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     sync_driver_license_notifications(db)
     db.commit()
+    sync_billing_notifications(db, user.id)
     prof = get_or_create_profile(db, user.id)
     vehicle = get_or_create_driver_vehicle(db, user.id) if user.role == UserRole.driver else None
     avg, cnt = rating_summary(db, user.id)
@@ -613,13 +616,24 @@ async def update_driver_documents(
 @router.get("/cities", response_model=list[CityOut])
 def list_cities(db: Session = Depends(get_db)):
     cities = db.scalars(select(City).where(City.is_active == True).order_by(City.name.asc())).all()
-    return [CityOut(id=city.id, name=city.name, is_active=city.is_active) for city in cities]
+    return [
+        CityOut(
+            id=city.id,
+            name=city.name,
+            is_active=city.is_active,
+            province_name=city.province_name,
+            tax_name=city.tax_name,
+            tax_rate=city.tax_rate,
+        )
+        for city in cities
+    ]
 
 
 @router.get("/notifications", response_model=list[NotificationOut])
 def list_notifications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     sync_driver_license_notifications(db)
     db.commit()
+    sync_billing_notifications(db, user.id)
     notifications = db.scalars(
         select(Notification)
         .where(Notification.user_id == user.id)
@@ -670,6 +684,7 @@ def request_driver_city(payload: DriverCitySelectIn, user: User = Depends(requir
     city = db.scalar(select(City).where(City.id == payload.city_id, City.is_active == True))
     if not city:
         raise HTTPException(404, "City not found")
+    ensure_user_can_change_city(db, user)
     sel = db.scalar(select(DriverCitySelection).where(DriverCitySelection.user_id == user.id))
     if not sel:
         sel = DriverCitySelection(user_id=user.id)
@@ -709,6 +724,7 @@ def request_rider_city(payload: DriverCitySelectIn, user: User = Depends(require
     city = db.scalar(select(City).where(City.id == payload.city_id, City.is_active == True))
     if not city:
         raise HTTPException(404, "City not found")
+    ensure_user_can_change_city(db, user)
     sel = db.scalar(select(DriverCitySelection).where(DriverCitySelection.user_id == user.id))
     if not sel:
         sel = DriverCitySelection(user_id=user.id)

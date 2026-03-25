@@ -74,6 +74,58 @@ def ensure_runtime_schema():
         if "completed_at" not in ride_cols:
             conn.execute(text("ALTER TABLE rides ADD COLUMN completed_at DATETIME"))
 
+        city_cols = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(cities)")).fetchall()
+        }
+        if "province_name" not in city_cols:
+            conn.execute(text("ALTER TABLE cities ADD COLUMN province_name VARCHAR(120) DEFAULT 'Ontario'"))
+        if "tax_name" not in city_cols:
+            conn.execute(text("ALTER TABLE cities ADD COLUMN tax_name VARCHAR(80) DEFAULT 'HST'"))
+        if "tax_rate" not in city_cols:
+            conn.execute(text("ALTER TABLE cities ADD COLUMN tax_rate FLOAT DEFAULT 13.0"))
+
+        billing_cols = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(billing_months)")).fetchall()
+        }
+        if "period_start" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN period_start DATETIME"))
+        if "period_end" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN period_end DATETIME"))
+        if "subtotal" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN subtotal FLOAT DEFAULT 0.0"))
+        if "tax_rate" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN tax_rate FLOAT DEFAULT 0.0"))
+        if "tax_amount" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN tax_amount FLOAT DEFAULT 0.0"))
+        if "due_at" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN due_at DATETIME"))
+        if "grace_expires_at" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN grace_expires_at DATETIME"))
+        if "paid_at" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN paid_at DATETIME"))
+        if "payment_provider" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN payment_provider VARCHAR(40) DEFAULT ''"))
+        if "payment_reference" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN payment_reference VARCHAR(255) DEFAULT ''"))
+        if "stripe_session_id" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN stripe_session_id VARCHAR(255) DEFAULT ''"))
+        if "stripe_payment_intent_id" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN stripe_payment_intent_id VARCHAR(255) DEFAULT ''"))
+        if "waived_at" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN waived_at DATETIME"))
+        if "waiver_reason" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN waiver_reason VARCHAR(255) DEFAULT ''"))
+        if "currency" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN currency VARCHAR(12) DEFAULT 'cad'"))
+        if "city_name" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN city_name VARCHAR(120) DEFAULT ''"))
+        if "province_name" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN province_name VARCHAR(120) DEFAULT ''"))
+        if "tax_name" not in billing_cols:
+            conn.execute(text("ALTER TABLE billing_months ADD COLUMN tax_name VARCHAR(80) DEFAULT ''"))
+
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)

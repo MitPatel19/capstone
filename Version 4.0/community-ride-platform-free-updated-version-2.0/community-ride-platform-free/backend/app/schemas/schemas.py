@@ -17,6 +17,8 @@ class UserOut(BaseModel):
     age: int
     is_student: bool
     rating_avg: float = 0.0
+    billing_free_access: bool = False
+    billing_access_status: str = "current"
 
 class SignupRiderIn(BaseModel):
     name: str
@@ -176,12 +178,84 @@ class BillItemOut(BaseModel):
 class BillOut(BaseModel):
     id: int
     month: str
+    period_key: str = ""
+    label: str = ""
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    subtotal: float = 0.0
+    tax_rate: float = 0.0
+    tax_name: str = ""
+    tax_amount: float = 0.0
     total_due: float
     is_paid: bool
+    is_waived: bool = False
+    status: str = "accruing"
+    payable_now: bool = False
+    due_at: Optional[str] = None
+    grace_expires_at: Optional[str] = None
+    paid_at: Optional[str] = None
+    waived_at: Optional[str] = None
+    waiver_reason: str = ""
+    currency: str = "cad"
+    city_name: str = ""
+    province_name: str = ""
     items: List[BillItemOut] = []
 
 class PayBillOut(BaseModel):
     status: str
+    bill_id: Optional[int] = None
+    checkout_url: Optional[str] = None
+
+
+class BillingSummaryOut(BaseModel):
+    period_key: str
+    label: str
+    fee_per_ride: float
+    completed_as_rider: int
+    completed_as_driver: int
+    subtotal: float
+    tax_rate: float
+    tax_name: str
+    tax_amount: float
+    total_due: float
+    status: str
+    city_name: str = ""
+    province_name: str = ""
+    currency: str = "cad"
+    is_free: bool = False
+    free_reason: str = ""
+
+
+class BillingAccessOut(BaseModel):
+    status: str
+    message: str = ""
+    has_outstanding_bill: bool = False
+    has_locked_bill: bool = False
+    days_left: Optional[int] = None
+    global_free_mode: bool = False
+    personal_free_access: bool = False
+    stripe_ready: bool = False
+
+
+class RidePaymentDeclarationIn(BaseModel):
+    payment_method: Literal["cash", "interac", "etransfer", "card", "other"]
+    note: str = ""
+
+
+class RidePaymentDeclarationOut(BaseModel):
+    ride_id: int
+    payer_user_id: int
+    payer_name: str = ""
+    payee_user_id: int
+    payee_name: str = ""
+    amount: float
+    payment_method: str = ""
+    note: str = ""
+    declared_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    route_label: str = ""
+    can_declare: bool = False
+    status: str = "pending"
 
 
 class ProfileOut(BaseModel):
@@ -240,10 +314,22 @@ class CityOut(BaseModel):
     id: int
     name: str
     is_active: bool = True
+    province_name: str = "Ontario"
+    tax_name: str = "HST"
+    tax_rate: float = 13.0
 
 
 class CityIn(BaseModel):
     name: str
+    province_name: str = "Ontario"
+    tax_name: str = "HST"
+    tax_rate: float = Field(default=13.0, ge=0)
+
+
+class CityTaxUpdateIn(BaseModel):
+    province_name: str = "Ontario"
+    tax_name: str = "HST"
+    tax_rate: float = Field(default=13.0, ge=0)
 
 
 class DriverCityOut(BaseModel):
@@ -285,6 +371,57 @@ class AuthActionOut(BaseModel):
     message: str
     email_sent: bool = False
     debug_url: Optional[str] = None
+
+
+class AdminBillingSettingsIn(BaseModel):
+    fee_per_ride: float = Field(gt=0)
+    global_free_mode: bool = False
+    cycle_length_days: int = Field(default=14, ge=14, le=14)
+    grace_period_days: int = Field(default=7, ge=1, le=30)
+    billing_anchor_date: str = "2024-01-01"
+
+
+class AdminBillingSettingsOut(BaseModel):
+    fee_per_ride: float
+    global_free_mode: bool
+    cycle_length_days: int
+    grace_period_days: int
+    billing_anchor_date: str
+    stripe_ready: bool = False
+    currency: str = "cad"
+
+
+class UserBillingAccessOut(BaseModel):
+    user_id: int
+    is_free_access: bool = False
+    reason: str = ""
+    updated_at: Optional[str] = None
+
+
+class UserBillingAccessIn(BaseModel):
+    is_free_access: bool
+    reason: str = ""
+
+
+class AdminBillOverviewOut(BaseModel):
+    bill_id: int
+    user_id: int
+    user_name: str
+    user_email: str
+    role: str
+    period_label: str
+    status: str
+    subtotal: float
+    tax_amount: float
+    total_due: float
+    is_paid: bool
+    is_waived: bool = False
+    city_name: str = ""
+    payment_provider: str = ""
+    payment_reference: str = ""
+    due_at: Optional[str] = None
+    grace_expires_at: Optional[str] = None
+    paid_at: Optional[str] = None
 
 
 class SupportReportOut(BaseModel):

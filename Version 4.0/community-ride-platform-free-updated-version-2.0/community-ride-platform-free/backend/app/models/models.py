@@ -213,13 +213,51 @@ class PlatformFee(Base):
     fee_per_ride: Mapped[float] = mapped_column(Float, default=0.50)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+class BillingSettings(Base):
+    __tablename__ = "billing_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    global_free_mode: Mapped[bool] = mapped_column(Boolean, default=False)
+    cycle_length_days: Mapped[int] = mapped_column(Integer, default=14)
+    grace_period_days: Mapped[int] = mapped_column(Integer, default=7)
+    billing_anchor_date: Mapped[str] = mapped_column(String(10), default="2024-01-01")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class UserBillingAccess(Base):
+    __tablename__ = "user_billing_access"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    is_free_access: Mapped[bool] = mapped_column(Boolean, default=False)
+    reason: Mapped[str] = mapped_column(String(255), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class BillingMonth(Base):
     __tablename__ = "billing_months"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     month: Mapped[str] = mapped_column(String(7), index=True)  # YYYY-MM
+    period_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    subtotal: Mapped[float] = mapped_column(Float, default=0.0)
+    tax_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
     total_due: Mapped[float] = mapped_column(Float, default=0.0)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    grace_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    payment_provider: Mapped[str] = mapped_column(String(40), default="")
+    payment_reference: Mapped[str] = mapped_column(String(255), default="")
+    stripe_session_id: Mapped[str] = mapped_column(String(255), default="")
+    stripe_payment_intent_id: Mapped[str] = mapped_column(String(255), default="")
+    waived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    waiver_reason: Mapped[str] = mapped_column(String(255), default="")
+    currency: Mapped[str] = mapped_column(String(12), default="cad")
+    city_name: Mapped[str] = mapped_column(String(120), default="")
+    province_name: Mapped[str] = mapped_column(String(120), default="")
+    tax_name: Mapped[str] = mapped_column(String(80), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     items: Mapped[list["BillingLineItem"]] = relationship(back_populates="bill", cascade="all, delete-orphan")
@@ -233,6 +271,26 @@ class BillingLineItem(Base):
     amount: Mapped[float] = mapped_column(Float, default=0.0)
 
     bill: Mapped[BillingMonth] = relationship(back_populates="items")
+
+
+class RidePaymentDeclaration(Base):
+    __tablename__ = "ride_payment_declarations"
+    __table_args__ = (
+        UniqueConstraint("ride_id", "payer_user_id", name="uq_ride_payment_decl_ride_payer"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ride_id: Mapped[int] = mapped_column(ForeignKey("rides.id"), index=True)
+    payer_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    payee_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    declared_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    payment_method: Mapped[str] = mapped_column(String(40), default="")
+    note: Mapped[str] = mapped_column(String(255), default="")
+    declared_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class UserProfile(Base):
@@ -261,6 +319,9 @@ class City(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    province_name: Mapped[str] = mapped_column(String(120), default="Ontario")
+    tax_name: Mapped[str] = mapped_column(String(80), default="HST")
+    tax_rate: Mapped[float] = mapped_column(Float, default=13.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
