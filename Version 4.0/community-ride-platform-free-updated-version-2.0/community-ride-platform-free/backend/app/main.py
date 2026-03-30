@@ -1,4 +1,7 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -14,9 +17,17 @@ from app.api.reports import router as reports_router
 from app.ws.manager import manager
 from app.core.auth import decode_token
 
+upload_dir = Path(settings.UPLOAD_DIR)
+if not upload_dir.is_absolute():
+    upload_dir = (Path.cwd() / upload_dir).resolve()
+upload_dir.mkdir(parents=True, exist_ok=True)
+
+frontend_dist_dir = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+frontend_index_path = frontend_dist_dir / "index.html"
+
 app = FastAPI(title=settings.APP_NAME)
 
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,6 +39,9 @@ app.add_middleware(
 
 
 def ensure_runtime_schema():
+    if engine.dialect.name != "sqlite":
+        return
+
     with engine.begin() as conn:
         user_cols = {
             row[1]
@@ -146,6 +160,13 @@ app.include_router(reports_router)
 def health():
     return {"status":"ok"}
 
+
+@app.get("/", include_in_schema=False)
+def serve_frontend_root():
+    if frontend_index_path.exists():
+        return FileResponse(frontend_index_path)
+    return {"status": "ok", "frontend_built": False}
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     token = ws.query_params.get("token")
@@ -168,3 +189,21 @@ async def websocket_endpoint(ws: WebSocket):
         await manager.disconnect(uid, ws)
     except Exception:
         await manager.disconnect(uid, ws)
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_frontend_app(full_path: str, request: Request):
+    if not frontend_index_path.exists():
+        raise HTTPException(status_code=404, detail="Frontend build not found")
+
+    candidate = (frontend_dist_dir / full_path).resolve()
+    if frontend_dist_dir.resolve() in candidate.parents and candidate.is_file():
+        return FileResponse(candidate)
+
+    if "." in Path(full_path).name:
+        raise HTTPException(status_code=404, detail="Static asset not found")
+
+    if "text/html" not in request.headers.get("accept", ""):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return FileResponse(frontend_index_path)

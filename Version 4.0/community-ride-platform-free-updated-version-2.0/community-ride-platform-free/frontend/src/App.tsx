@@ -101,8 +101,8 @@ export default function App() {
         setToasts((prev) => [{
           id: crypto.randomUUID(),
           title: 'Ride Completed',
-          body: 'Please leave feedback to keep the community trustworthy.',
-          action: { label: 'Rate Now', to: `/feedback/${msg.ride_id}` }
+          body: 'Declare how the ride was paid and settle your platform bill from the billing page.',
+          action: { label: 'Open Billing', to: '/billing' }
         }, ...prev].slice(0,3))
       }
     })

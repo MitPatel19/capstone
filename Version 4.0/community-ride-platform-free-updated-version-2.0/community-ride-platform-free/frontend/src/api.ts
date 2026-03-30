@@ -1,6 +1,12 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
+function defaultApiBase() {
+  if (typeof window === 'undefined') return 'http://localhost:8000'
+  if (import.meta.env.DEV) return 'http://localhost:8000'
+  return window.location.origin
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? defaultApiBase()
 
 export const api = axios.create({
   baseURL: API_BASE,

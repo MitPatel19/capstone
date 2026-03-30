@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
 from typing import List
 from pathlib import Path
 
@@ -22,6 +21,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     UPLOAD_DIR: str = "./uploads"
     FRONTEND_URL: str = "http://localhost:5173"
+    ADMIN_EMAIL: str = "admin@example.com"
+    ADMIN_PASSWORD: str = "change-me-in-prod"
+    ADMIN_NAME: str = "Admin"
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""

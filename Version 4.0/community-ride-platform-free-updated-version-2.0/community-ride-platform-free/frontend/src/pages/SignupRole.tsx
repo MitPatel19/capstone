@@ -14,7 +14,7 @@ export default function SignupRole() {
       <CardContent className="grid md:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <div className="font-black text-xl">Rider</div>
-          <div className="text-sm text-slate-600 mt-2">Request rides, bargain, join rides, and view monthly bills.</div>
+          <div className="text-sm text-slate-600 mt-2">Request rides, bargain, join rides, and manage bi-weekly platform bills.</div>
           <Button className="mt-5" onClick={()=>nav('/signup/rider')}>Sign up as Rider</Button>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6">

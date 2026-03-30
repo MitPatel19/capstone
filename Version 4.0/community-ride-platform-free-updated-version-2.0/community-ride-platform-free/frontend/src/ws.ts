@@ -2,13 +2,19 @@ import { getToken } from './api'
 
 type Handler = (msg: any) => void
 
+function defaultWsBase() {
+  if (typeof window === 'undefined') return 'ws://localhost:8000'
+  if (import.meta.env.DEV) return 'ws://localhost:8000'
+  return window.location.origin.replace(/^http/, 'ws')
+}
+
 export class WSClient {
   private ws: WebSocket | null = null
   private handlers: Set<Handler> = new Set()
   connect() {
     const token = getToken()
     if (!token) return
-    const url = (import.meta.env.VITE_WS_BASE ?? 'ws://localhost:8000') + `/ws?token=${encodeURIComponent(token)}`
+    const url = (import.meta.env.VITE_WS_BASE ?? defaultWsBase()) + `/ws?token=${encodeURIComponent(token)}`
     this.ws = new WebSocket(url)
     this.ws.onmessage = (ev) => {
       try {

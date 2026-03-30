@@ -13,13 +13,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     location.pathname.startsWith('/driver') ||
     location.pathname.startsWith('/ride/') ||
     location.pathname.startsWith('/billing') ||
-    location.pathname.startsWith('/profile')
+    location.pathname.startsWith('/profile') ||
+    location.pathname.startsWith('/payment-confirmation')
   )
   const isRiderView = role === 'rider' && (
     location.pathname.startsWith('/rider') ||
     location.pathname.startsWith('/ride/') ||
     location.pathname.startsWith('/billing') ||
-    location.pathname.startsWith('/profile')
+    location.pathname.startsWith('/profile') ||
+    location.pathname.startsWith('/payment-confirmation')
   )
 
   if (isAdminView) {

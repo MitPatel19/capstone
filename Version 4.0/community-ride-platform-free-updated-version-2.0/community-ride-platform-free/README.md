@@ -34,21 +34,85 @@ npm run dev
 Now open: http://localhost:5173
 
 Admin seeded:
-- Email: **pmit9114@gmail.com**
-- Password: **Mit@2020**
+- Email: whatever you set in `ADMIN_EMAIL`
+- Password: whatever you set in `ADMIN_PASSWORD`
 
-## 2) Free deployment (simple)
+## 2) Deploy on Railway
 
-### Option A (Free): Render (backend) + Vercel (frontend)
-- Deploy backend on Render (free web service). Set `DATABASE_URL` to SQLite or free Postgres (Neon/Supabase).
-- Deploy frontend on Vercel. Set env:
-  - `VITE_API_BASE=https://<your-backend-url>`
-  - `VITE_WS_BASE=wss://<your-backend-url>`
+This repo now includes a root `Dockerfile` that:
+- builds the Vite frontend
+- runs the FastAPI backend
+- serves the built frontend from the same Railway service
 
-### Option B (Free): Railway / Fly.io alternatives
-Any platform that can run:
-- `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- `npm run build` + static hosting
+That means you can deploy this app as a **single Railway service** with one public domain.
+
+### Recommended Railway setup
+
+1. Push this repo to GitHub.
+2. In Railway, create a new project from the GitHub repo.
+3. Keep the source at the repo root so Railway picks up the root `Dockerfile`.
+4. Add a public domain to the service.
+5. Set the health check path to `/health`.
+
+### Railway variables
+
+Set these service variables in Railway:
+
+```env
+ENV=prod
+SECRET_KEY=replace-with-a-long-random-secret
+FRONTEND_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
+CORS_ORIGINS=https://${{RAILWAY_PUBLIC_DOMAIN}}
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=replace-with-a-strong-password
+ADMIN_NAME=Admin
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+SMTP_FROM_NAME=Community Ride Coordination Platform
+SMTP_USE_TLS=true
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+BILLING_CURRENCY=cad
+```
+
+### Storage choice A: easiest demo deploy
+
+Attach a Railway volume at `/app/backend/data` and set:
+
+```env
+DATABASE_URL=sqlite:////app/backend/data/app.db
+UPLOAD_DIR=/app/backend/data/uploads
+```
+
+Use this if you want the fastest deployment with the least setup.
+
+### Storage choice B: better long-term deploy
+
+1. Add a Railway Postgres service to the same project.
+2. Reference its connection string from your web service:
+
+```env
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+```
+
+3. Still attach a Railway volume for uploaded files and set:
+
+```env
+UPLOAD_DIR=/app/backend/data/uploads
+```
+
+Use this if you want a proper database instead of SQLite.
+
+### Notes for this project
+
+- You do **not** need `VITE_API_BASE` or `VITE_WS_BASE` for the Railway single-service setup, because the frontend now falls back to the same origin in production.
+- If you use Stripe checkout or email verification, `FRONTEND_URL` must point to your Railway public domain.
+- Driver documents and report attachments are stored in `UPLOAD_DIR`, so use a volume unless you move uploads to object storage later.
+- For a fresh Postgres deploy, the current schema will be created automatically on startup.
 
 ## Notes
 - Location suggestions use **OpenStreetMap Nominatim** (free, no key).

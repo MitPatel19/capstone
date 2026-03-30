@@ -21,6 +21,8 @@ type User = {
   email: string
   status: 'active' | 'disabled'
   rating_avg?: number
+  billing_free_access?: boolean
+  billing_access_status?: string
 }
 
 type FlaggedReport = {
@@ -43,14 +45,49 @@ type City = {
   id: number
   name: string
   is_active: boolean
+  province_name: string
+  tax_name: string
+  tax_rate: number
 }
 
 type CityRequest = {
   user_id: number
-  driver_name: string
-  driver_email: string
+  user_name: string
+  user_email: string
+  user_role: string
   pending_city_id: number
   pending_city_name: string
+}
+
+type BillingSettings = {
+  fee_per_ride: number
+  global_free_mode: boolean
+  cycle_length_days: number
+  grace_period_days: number
+  billing_anchor_date: string
+  stripe_ready: boolean
+  currency: string
+}
+
+type BillingOverview = {
+  bill_id: number
+  user_id: number
+  user_name: string
+  user_email: string
+  role: string
+  period_label: string
+  status: string
+  subtotal: number
+  tax_amount: number
+  total_due: number
+  is_paid: boolean
+  is_waived: boolean
+  city_name: string
+  payment_provider: string
+  payment_reference: string
+  due_at?: string | null
+  grace_expires_at?: string | null
+  paid_at?: string | null
 }
 
 type TabKey = 'pending' | 'users' | 'fees' | 'reports'
@@ -58,7 +95,7 @@ type TabKey = 'pending' | 'users' | 'fees' | 'reports'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'pending', label: 'Pending Approvals' },
   { key: 'users', label: 'User Management' },
-  { key: 'fees', label: 'Platform Fees' },
+  { key: 'fees', label: 'Billing & Fees' },
   { key: 'reports', label: 'Reports & Flags' },
 ]
 
@@ -84,7 +121,17 @@ export default function AdminDashboard() {
   const [cities, setCities] = useState<City[]>([])
   const [cityRequests, setCityRequests] = useState<CityRequest[]>([])
   const [newCity, setNewCity] = useState('')
-  const [fee, setFee] = useState<number>(0.5)
+  const [billingSettings, setBillingSettings] = useState<BillingSettings>({
+    fee_per_ride: 0.5,
+    global_free_mode: false,
+    cycle_length_days: 14,
+    grace_period_days: 7,
+    billing_anchor_date: '2024-01-01',
+    stripe_ready: false,
+    currency: 'cad',
+  })
+  const [billingRows, setBillingRows] = useState<BillingOverview[]>([])
+  const [cityDrafts, setCityDrafts] = useState<Record<number, { province_name: string; tax_name: string; tax_rate: number }>>({})
   const [loading, setLoading] = useState(true)
   const [savingFee, setSavingFee] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -100,17 +147,31 @@ export default function AdminDashboard() {
       const [p, u, f, r, c, cr] = await Promise.all([
         api.get('/admin/drivers/pending'),
         api.get('/admin/users'),
-        api.get('/admin/fee'),
+        api.get('/admin/billing/settings'),
         api.get('/admin/reports'),
         api.get('/admin/cities'),
         api.get('/admin/cities/requests'),
       ])
+      const billing = await api.get('/admin/billing/overview')
       setPending(p.data)
       setUsers(u.data)
-      setFee(f.data.fee_per_ride)
+      setBillingSettings(f.data)
       setReports(r.data)
       setCities(c.data)
       setCityRequests(cr.data)
+      setBillingRows(billing.data)
+      setCityDrafts(
+        Object.fromEntries(
+          (c.data as City[]).map((city) => [
+            city.id,
+            {
+              province_name: city.province_name,
+              tax_name: city.tax_name,
+              tax_rate: Number(city.tax_rate ?? 0),
+            },
+          ])
+        )
+      )
     } finally {
       setLoading(false)
     }
@@ -124,8 +185,14 @@ export default function AdminDashboard() {
     setSavingFee(true)
     setMsg(null)
     try {
-      await api.post('/admin/fee', { fee_per_ride: fee })
-      setMsg('Platform fee updated.')
+      await api.post('/admin/billing/settings', {
+        fee_per_ride: billingSettings.fee_per_ride,
+        global_free_mode: billingSettings.global_free_mode,
+        cycle_length_days: billingSettings.cycle_length_days,
+        grace_period_days: billingSettings.grace_period_days,
+        billing_anchor_date: billingSettings.billing_anchor_date,
+      })
+      setMsg('Billing settings updated.')
       await load()
     } finally {
       setSavingFee(false)
@@ -148,7 +215,7 @@ export default function AdminDashboard() {
       },
       {
         label: 'Platform Fee',
-        value: `$${fee.toFixed(2)}`,
+        value: `$${billingSettings.fee_per_ride.toFixed(2)}`,
         icon: <Wallet className="h-11 w-11 text-emerald-200" />,
       },
       {
@@ -157,7 +224,7 @@ export default function AdminDashboard() {
         icon: <AlertTriangle className="h-11 w-11 text-rose-200" />,
       },
     ],
-    [fee, pending.length, reportRows.length, users.length]
+    [billingSettings.fee_per_ride, pending.length, reportRows.length, users.length]
   )
 
   async function approveDriver(driverId: number) {
@@ -175,16 +242,35 @@ export default function AdminDashboard() {
     await load()
   }
 
+  async function toggleFreeAccess(uid: number, enabled: boolean) {
+    await api.post(`/admin/billing/users/${uid}/free-access`, {
+      is_free_access: enabled,
+      reason: enabled ? 'Admin granted personal free access.' : '',
+    })
+    setMsg(enabled ? 'Personal free access granted.' : 'Personal free access removed.')
+    await load()
+  }
+
   async function addCity() {
     const name = newCity.trim()
     if (!name) return
     await api.post('/admin/cities', { name })
     setNewCity('')
+    setMsg('City added.')
     await load()
   }
 
   async function removeCity(cityId: number) {
     await api.delete(`/admin/cities/${cityId}`)
+    setMsg('City removed.')
+    await load()
+  }
+
+  async function saveCityTax(cityId: number) {
+    const draft = cityDrafts[cityId]
+    if (!draft) return
+    await api.put(`/admin/cities/${cityId}`, draft)
+    setMsg('City tax settings updated.')
     await load()
   }
 
@@ -260,6 +346,7 @@ export default function AdminDashboard() {
 
         <section className="rounded-3xl border border-slate-300 bg-white p-8">
           {loading && <div className="text-base text-slate-600">Loading...</div>}
+          {!loading && msg && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{msg}</div>}
 
           {!loading && activeTab === 'pending' && (
             <div>
@@ -358,8 +445,8 @@ export default function AdminDashboard() {
               )}
 
               <div className="mt-10">
-                <h3 className="text-xl font-black">Pending Driver City Requests</h3>
-                <p className="mt-1 text-sm text-slate-600">Approve or reject city changes requested by drivers</p>
+                <h3 className="text-xl font-black">Pending City Requests</h3>
+                <p className="mt-1 text-sm text-slate-600">Approve or reject city changes requested by riders and drivers</p>
                 {cityRequests.length === 0 ? (
                   <div className="mt-4 text-sm text-slate-500">No pending city requests.</div>
                 ) : (
@@ -367,7 +454,8 @@ export default function AdminDashboard() {
                     <table className="min-w-full text-left">
                       <thead>
                         <tr className="border-b border-slate-200 text-sm font-bold">
-                          <th className="px-3 py-3">Driver</th>
+                          <th className="px-3 py-3">User</th>
+                          <th className="px-3 py-3">Role</th>
                           <th className="px-3 py-3">Email</th>
                           <th className="px-3 py-3">Requested City</th>
                           <th className="px-3 py-3">Actions</th>
@@ -376,8 +464,11 @@ export default function AdminDashboard() {
                       <tbody>
                         {cityRequests.map((req) => (
                           <tr key={req.user_id} className="border-b border-slate-200 text-sm">
-                            <td className="px-3 py-3">{req.driver_name}</td>
-                            <td className="px-3 py-3">{req.driver_email}</td>
+                            <td className="px-3 py-3">{req.user_name}</td>
+                            <td className="px-3 py-3">
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize text-slate-700">{req.user_role || '-'}</span>
+                            </td>
+                            <td className="px-3 py-3">{req.user_email}</td>
                             <td className="px-3 py-3">{req.pending_city_name}</td>
                             <td className="px-3 py-3">
                               <div className="flex gap-2">
@@ -412,6 +503,8 @@ export default function AdminDashboard() {
                       <th className="px-3 py-4">Email</th>
                       <th className="px-3 py-4">Role</th>
                       <th className="px-3 py-4">Rating</th>
+                      <th className="px-3 py-4">Billing</th>
+                      <th className="px-3 py-4">Free Access</th>
                       <th className="px-3 py-4">Status</th>
                       <th className="px-3 py-4">Actions</th>
                     </tr>
@@ -432,6 +525,31 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-3 py-4">{(u.rating_avg ?? 0).toFixed(1)}</td>
+                        <td className="px-3 py-4">
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
+                            u.billing_access_status === 'locked'
+                              ? 'bg-rose-100 text-rose-700'
+                              : u.billing_access_status === 'warning'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {u.billing_access_status || 'current'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-4">
+                          <button
+                            className={[
+                              'rounded-xl px-4 py-2 text-sm font-bold',
+                              u.billing_free_access
+                                ? 'border border-slate-300 bg-white hover:bg-slate-50'
+                                : 'bg-brand-600 text-white hover:bg-brand-700',
+                            ].join(' ')}
+                            onClick={() => toggleFreeAccess(u.id, !u.billing_free_access)}
+                            disabled={u.role === 'admin'}
+                          >
+                            {u.billing_free_access ? 'Remove Free' : 'Grant Free'}
+                          </button>
+                        </td>
                         <td className="px-3 py-4">
                           <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">{u.status}</span>
                         </td>
@@ -458,9 +576,9 @@ export default function AdminDashboard() {
                 </table>
               </div>
 
-              <div className="mt-10 max-w-3xl rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <h3 className="text-lg font-black">City Dropdown Management</h3>
-                <p className="mt-1 text-sm text-slate-600">Add or remove cities available to drivers</p>
+              <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-lg font-black">City Tax Management</h3>
+                <p className="mt-1 text-sm text-slate-600">Add cities and control the province and tax profile used on bi-weekly bills.</p>
                 <div className="mt-3 flex gap-2">
                   <input
                     className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
@@ -472,14 +590,74 @@ export default function AdminDashboard() {
                     Add City
                   </button>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-6 grid gap-4 lg:grid-cols-2">
                   {cities.map((city) => (
-                    <span key={city.id} className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold">
-                      {city.name}
-                      <button className="text-rose-600 hover:underline" onClick={() => removeCity(city.id)}>
-                        remove
+                    <div key={city.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-lg font-black">{city.name}</div>
+                          <div className="text-xs text-slate-500">Used to calculate platform bill tax snapshots</div>
+                        </div>
+                        <button className="text-sm font-semibold text-rose-600 hover:underline" onClick={() => removeCity(city.id)}>
+                          remove
+                        </button>
+                      </div>
+                      <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <input
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                          value={cityDrafts[city.id]?.province_name ?? city.province_name}
+                          onChange={(e) =>
+                            setCityDrafts((prev) => ({
+                              ...prev,
+                              [city.id]: {
+                                ...prev[city.id],
+                                province_name: e.target.value,
+                                tax_name: prev[city.id]?.tax_name ?? city.tax_name,
+                                tax_rate: prev[city.id]?.tax_rate ?? city.tax_rate,
+                              },
+                            }))
+                          }
+                          placeholder="Province"
+                        />
+                        <input
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                          value={cityDrafts[city.id]?.tax_name ?? city.tax_name}
+                          onChange={(e) =>
+                            setCityDrafts((prev) => ({
+                              ...prev,
+                              [city.id]: {
+                                ...prev[city.id],
+                                province_name: prev[city.id]?.province_name ?? city.province_name,
+                                tax_name: e.target.value,
+                                tax_rate: prev[city.id]?.tax_rate ?? city.tax_rate,
+                              },
+                            }))
+                          }
+                          placeholder="Tax name"
+                        />
+                        <input
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                          type="number"
+                          step="0.01"
+                          value={cityDrafts[city.id]?.tax_rate ?? city.tax_rate}
+                          onChange={(e) =>
+                            setCityDrafts((prev) => ({
+                              ...prev,
+                              [city.id]: {
+                                ...prev[city.id],
+                                province_name: prev[city.id]?.province_name ?? city.province_name,
+                                tax_name: prev[city.id]?.tax_name ?? city.tax_name,
+                                tax_rate: Number(e.target.value || 0),
+                              },
+                            }))
+                          }
+                          placeholder="Tax rate"
+                        />
+                      </div>
+                      <button className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={() => saveCityTax(city.id)}>
+                        Save Tax Settings
                       </button>
-                    </span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -487,31 +665,129 @@ export default function AdminDashboard() {
           )}
 
           {!loading && activeTab === 'fees' && (
-            <div className="max-w-5xl">
-              <h2 className="text-2xl font-black">Platform Fee Settings</h2>
-              <p className="mt-2 text-base text-slate-600">Manage the platform service fee per completed ride</p>
+            <div className="space-y-8">
+              <div className="max-w-5xl">
+                <h2 className="text-2xl font-black">Billing Controls</h2>
+                <p className="mt-2 text-base text-slate-600">Manage platform fees, launch free mode, and Stripe readiness for bi-weekly billing.</p>
 
-              <div className="mt-8 space-y-4">
-                <label className="block text-base font-bold" htmlFor="platform-fee">
-                  Platform Fee Per Ride (USD)
-                </label>
-                <input
-                  id="platform-fee"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
-                  type="number"
-                  step="0.01"
-                  value={fee}
-                  onChange={(e) => setFee(Number(e.target.value || 0))}
-                />
-                <p className="text-base text-slate-600">This dollar amount is charged on each completed ride</p>
+                <div className="mt-8 grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <label className="block text-base font-bold" htmlFor="platform-fee">
+                      Platform Fee Per Ride (CAD)
+                    </label>
+                    <input
+                      id="platform-fee"
+                      className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                      type="number"
+                      step="0.01"
+                      value={billingSettings.fee_per_ride}
+                      onChange={(e) => setBillingSettings((prev) => ({ ...prev, fee_per_ride: Number(e.target.value || 0) }))}
+                    />
+                    <p className="mt-3 text-sm text-slate-600">This amount is the platform bill charged per completed rider or driver participation.</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-base font-bold">Global Free Mode</div>
+                        <div className="mt-2 text-sm text-slate-600">Turn this on during launch so everyone can use the app without platform billing.</div>
+                      </div>
+                      <label className="inline-flex cursor-pointer items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={billingSettings.global_free_mode}
+                          onChange={(e) => setBillingSettings((prev) => ({ ...prev, global_free_mode: e.target.checked }))}
+                        />
+                        <span className="text-sm font-bold">{billingSettings.global_free_mode ? 'Enabled' : 'Disabled'}</span>
+                      </label>
+                    </div>
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                      Billing cycle: every {billingSettings.cycle_length_days} days<br />
+                      Grace period before lock: {billingSettings.grace_period_days} days<br />
+                      Stripe checkout ready: <b>{billingSettings.stripe_ready ? 'Yes' : 'No'}</b>
+                    </div>
+                  </div>
+                </div>
+
                 <button
-                  className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-60"
+                  className="mt-6 rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-60"
                   onClick={saveFee}
                   disabled={savingFee}
                 >
-                  {savingFee ? 'Saving...' : 'Save Changes'}
+                  {savingFee ? 'Saving...' : 'Save Billing Settings'}
                 </button>
-                {msg && <p className="text-base text-emerald-700">{msg}</p>}
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black">Bill Overview</h3>
+                <p className="mt-1 text-sm text-slate-600">See who has paid, who is free, and who is approaching or past the billing deadline.</p>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-sm font-bold">
+                        <th className="px-3 py-3">User</th>
+                        <th className="px-3 py-3">Role</th>
+                        <th className="px-3 py-3">Period</th>
+                        <th className="px-3 py-3">City</th>
+                        <th className="px-3 py-3">Total</th>
+                        <th className="px-3 py-3">Status</th>
+                        <th className="px-3 py-3">Payment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billingRows.length === 0 ? (
+                        <tr>
+                          <td className="px-3 py-4 text-sm text-slate-500" colSpan={7}>
+                            No billing rows yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        billingRows.map((row) => (
+                          <tr key={row.bill_id} className="border-b border-slate-200 text-sm">
+                            <td className="px-3 py-3">
+                              <div className="font-semibold">{row.user_name}</div>
+                              <div className="text-xs text-slate-500">{row.user_email}</div>
+                            </td>
+                            <td className="px-3 py-3 capitalize">{row.role}</td>
+                            <td className="px-3 py-3">{row.period_label}</td>
+                            <td className="px-3 py-3">{row.city_name || '-'}</td>
+                            <td className="px-3 py-3">
+                              <div className="font-semibold">${row.total_due.toFixed(2)}</div>
+                              <div className="text-xs text-slate-500">Tax ${row.tax_amount.toFixed(2)}</div>
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
+                                row.status === 'locked'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : row.status === 'due'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : row.status === 'paid'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : row.status === 'waived'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {row.status}
+                              </span>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {row.paid_at ? `Paid ${formatDate(row.paid_at)}` : row.due_at ? `Due ${formatDate(row.due_at)}` : '-'}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3">
+                              {row.payment_provider ? (
+                                <div>
+                                  <div className="font-semibold capitalize">{row.payment_provider}</div>
+                                  <div className="max-w-[180px] truncate text-xs text-slate-500">{row.payment_reference || '-'}</div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

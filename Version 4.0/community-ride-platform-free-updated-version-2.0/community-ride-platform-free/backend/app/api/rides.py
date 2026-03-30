@@ -15,6 +15,7 @@ router = APIRouter(prefix="/rides", tags=["rides"])
 
 PRIMARY_RIDER_JOIN_SHARE = 0.35
 DRIVER_COMPLETED_RIDE_RETENTION_HOURS = 24
+DRIVER_TERMINAL_RIDE_STATUSES = {RideStatus.completed, RideStatus.cancelled}
 
 
 def money_round(value: float) -> float:
@@ -236,7 +237,7 @@ def my_rides(user: User = Depends(get_current_user), db: Session = Depends(get_d
         cutoff = datetime.utcnow() - timedelta(hours=DRIVER_COMPLETED_RIDE_RETENTION_HOURS)
         rides = [
             r for r in rides
-            if r.status != RideStatus.completed
+            if r.status not in DRIVER_TERMINAL_RIDE_STATUSES
             or (r.completed_at or r.created_at) >= cutoff
         ]
     else:
@@ -554,6 +555,7 @@ async def cancel_ride(ride_id: int, payload: CancelIn, user: User = Depends(get_
     if r.status in (RideStatus.completed, RideStatus.cancelled):
         raise HTTPException(400, "Already finished")
     r.status = RideStatus.cancelled
+    r.completed_at = datetime.utcnow()
     db.add(Cancellation(ride_id=r.id, by_user_id=user.id, reason=payload.reason))
     db.commit()
     await manager.send_to_user(r.rider_id, {"type":"ride_update","ride_id":r.id})

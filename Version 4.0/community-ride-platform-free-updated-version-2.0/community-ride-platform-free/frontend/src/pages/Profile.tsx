@@ -164,6 +164,8 @@ export default function Profile() {
       const res = await api.post('/auth/driver_city', { city_id: selectedCityId })
       setDriverCity(res.data)
       setMsg('City submitted for admin approval.')
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail ?? 'Unable to submit city change right now.')
     } finally {
       setSaving(false)
     }
@@ -179,6 +181,8 @@ export default function Profile() {
       setRiderCity(res.data)
       if (selectedCity) setForm((v) => ({ ...v, default_address: selectedCity.name }))
       setMsg('City submitted for admin approval.')
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail ?? 'Unable to submit city change right now.')
     } finally {
       setSaving(false)
     }

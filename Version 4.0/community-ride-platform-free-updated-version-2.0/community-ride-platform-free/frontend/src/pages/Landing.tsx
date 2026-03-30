@@ -19,7 +19,7 @@ export default function Landing() {
           </h1>
           <p className="mt-4 text-slate-600 text-lg">
             Verified drivers, structured bargaining, join-ride requests, OTP pickup verification,
-            and monthly postpaid billing — all in one responsive web app.
+            and bi-weekly postpaid platform billing — all in one responsive web app.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button onClick={() => nav('/login?role=rider')}>Login as Rider</Button>
@@ -41,9 +41,9 @@ export default function Landing() {
                 <Feature icon={<Users className="h-5 w-5" />} title="Community friendly" desc="Clear rules for bargaining, joining, and cancellations." />
               </div>
               <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="font-bold">Monthly postpaid billing</div>
+                <div className="font-bold">Bi-weekly platform billing</div>
                 <div className="text-sm text-slate-600 mt-1">
-                  Per-ride platform fee is tracked and billed monthly (Stripe-ready placeholder).
+                  Per-ride platform fees are tracked, taxed by city, and billed every 14 days through Stripe checkout.
                 </div>
               </div>
             </CardContent>
