@@ -50,9 +50,16 @@ That means you can deploy this app as a **single Railway service** with one publ
 
 1. Push this repo to GitHub.
 2. In Railway, create a new project from the GitHub repo.
-3. Keep the source at the repo root so Railway picks up the root `Dockerfile`.
-4. Add a public domain to the service.
-5. Set the health check path to `/health`.
+3. In the Railway service `Settings`, set `Root Directory` to the app folder.
+4. For this repository layout, use:
+
+```text
+/Version 4.0/community-ride-platform-free-updated-version-2.0/community-ride-platform-free
+```
+
+5. Railway should then detect the `Dockerfile` inside that folder instead of trying to build from the top-level repo.
+6. Add a public domain to the service.
+7. Set the health check path to `/health`.
 
 ### Railway variables
 
@@ -111,6 +118,7 @@ Use this if you want a proper database instead of SQLite.
 
 - You do **not** need `VITE_API_BASE` or `VITE_WS_BASE` for the Railway single-service setup, because the frontend now falls back to the same origin in production.
 - If you use Stripe checkout or email verification, `FRONTEND_URL` must point to your Railway public domain.
+- If your Railway deployment cannot reach SMTP, signup will no longer crash. The verification screen will show a fallback verification link for newly created accounts.
 - Driver documents and report attachments are stored in `UPLOAD_DIR`, so use a volume unless you move uploads to object storage later.
 - For a fresh Postgres deploy, the current schema will be created automatically on startup.
 

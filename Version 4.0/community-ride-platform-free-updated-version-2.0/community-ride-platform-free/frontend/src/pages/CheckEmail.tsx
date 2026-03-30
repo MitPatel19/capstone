@@ -16,8 +16,11 @@ export default function CheckEmail() {
   const role = q.get('role') || 'rider'
   const mode = q.get('mode') || 'verify'
   const debugUrl = q.get('debug_url') || ''
+  const initialMessage = q.get('msg') || ''
   const [email, setEmail] = useState(q.get('email') || '')
-  const [msg, setMsg] = useState<string | null>(debugUrl ? 'SMTP is not configured yet, so a local test link is shown below.' : null)
+  const [msg, setMsg] = useState<string | null>(
+    initialMessage || (debugUrl ? 'Email delivery is unavailable right now, so a verification link is shown below.' : null)
+  )
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -28,7 +31,14 @@ export default function CheckEmail() {
       const res = await api.post('/auth/resend-verification', { email })
       setMsg(res.data?.message ?? 'Verification email sent.')
       if (res.data?.debug_url) {
-        window.history.replaceState({}, '', `/check-email?mode=${mode}&role=${role}&email=${encodeURIComponent(email)}&debug_url=${encodeURIComponent(res.data.debug_url)}`)
+        const params = new URLSearchParams({
+          mode,
+          role,
+          email,
+        })
+        params.set('debug_url', res.data.debug_url)
+        if (res.data?.message) params.set('msg', res.data.message)
+        window.history.replaceState({}, '', `/check-email?${params.toString()}`)
       }
     } catch (e: any) {
       setErr(e?.response?.data?.detail ?? 'Unable to resend verification email')
@@ -66,7 +76,7 @@ export default function CheckEmail() {
 
         {debugUrl && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 break-all">
-            Local test link: <a className="font-semibold underline" href={debugUrl}>{debugUrl}</a>
+            Verification link: <a className="font-semibold underline" href={debugUrl}>{debugUrl}</a>
           </div>
         )}
 

@@ -1,7 +1,10 @@
+import logging
 import smtplib
 from email.message import EmailMessage
 
 from app.core.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def send_email(to_email: str, subject: str, text_body: str, html_body: str = "") -> bool:
@@ -20,10 +23,20 @@ def send_email(to_email: str, subject: str, text_body: str, html_body: str = "")
     if html_body:
         msg.add_alternative(html_body, subtype="html")
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
-        if settings.SMTP_USE_TLS:
-            server.starttls()
-        if smtp_username:
-            server.login(smtp_username, smtp_password)
-        server.send_message(msg)
-    return True
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
+            if settings.SMTP_USE_TLS:
+                server.starttls()
+            if smtp_username:
+                server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+        return True
+    except (OSError, smtplib.SMTPException) as exc:
+        logger.warning(
+            "Email delivery failed to %s via %s:%s: %s",
+            to_email,
+            settings.SMTP_HOST,
+            settings.SMTP_PORT,
+            exc,
+        )
+        return False

@@ -34,8 +34,10 @@ def build_reset_url(token: str) -> str:
     return f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
 
 
-def maybe_debug_url(url: str, email_sent: bool) -> str | None:
-    if email_sent or settings.ENV.lower() == "prod":
+def maybe_debug_url(url: str, email_sent: bool, allow_prod_fallback: bool = False) -> str | None:
+    if email_sent:
+        return None
+    if settings.ENV.lower() == "prod" and not allow_prod_fallback:
         return None
     return url
 
@@ -179,11 +181,14 @@ def signup_rider(payload: SignupRiderIn, db: Session = Depends(get_db)):
     upsert_approved_city_selection(db, user.id, payload.city_id)
     email_sent, verify_url = send_verification_email(user)
     db.commit()
+    message = "Account created. Verify your email before logging in."
+    if not email_sent:
+        message = "Account created, but the verification email could not be delivered. Use the verification link on the next screen."
     return AuthActionOut(
         status="verification_required",
-        message="Account created. Verify your email before logging in.",
+        message=message,
         email_sent=email_sent,
-        debug_url=maybe_debug_url(verify_url, email_sent),
+        debug_url=maybe_debug_url(verify_url, email_sent, allow_prod_fallback=True),
     )
 
 
@@ -259,11 +264,14 @@ async def signup_driver(
     db.commit()
     sync_driver_license_notifications(db)
     db.commit()
+    message = "Application received. Verify your email first, then wait for admin approval."
+    if not email_sent:
+        message = "Application received, but the verification email could not be delivered. Use the verification link on the next screen, then wait for admin approval."
     return AuthActionOut(
         status="verification_required",
-        message="Application received. Verify your email first, then wait for admin approval.",
+        message=message,
         email_sent=email_sent,
-        debug_url=maybe_debug_url(verify_url, email_sent),
+        debug_url=maybe_debug_url(verify_url, email_sent, allow_prod_fallback=True),
     )
 
 
@@ -321,11 +329,14 @@ def resend_verification(payload: ResendVerificationIn, db: Session = Depends(get
         )
     email_sent, verify_url = send_verification_email(user)
     db.commit()
+    message = "Verification email sent. Please check your inbox."
+    if not email_sent:
+        message = "Verification email could not be delivered right now. Use the verification link on the next screen."
     return AuthActionOut(
         status="verification_sent",
-        message="Verification email sent. Please check your inbox.",
+        message=message,
         email_sent=email_sent,
-        debug_url=maybe_debug_url(verify_url, email_sent),
+        debug_url=maybe_debug_url(verify_url, email_sent, allow_prod_fallback=True),
     )
 
 

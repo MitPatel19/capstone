@@ -46,7 +46,14 @@ export default function Login() {
       const debugUrl = res.data?.debug_url
       setInfo(res.data?.message ?? 'Verification email sent.')
       if (debugUrl) {
-        nav(`/check-email?mode=verify&role=${role}&email=${encodeURIComponent(email)}&debug_url=${encodeURIComponent(debugUrl)}`)
+        const params = new URLSearchParams({
+          mode: 'verify',
+          role,
+          email,
+          debug_url: debugUrl,
+        })
+        if (res.data?.message) params.set('msg', res.data.message)
+        nav(`/check-email?${params.toString()}`)
         return
       }
     } catch (e: any) {

@@ -65,6 +65,7 @@ export default function DriverSignup() {
         role: 'driver',
         email,
       })
+      if (res.data?.message) params.set('msg', res.data.message)
       if (res.data?.debug_url) params.set('debug_url', res.data.debug_url)
       nav(`/check-email?${params.toString()}`)
     } catch (e: any) {
