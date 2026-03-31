@@ -313,26 +313,28 @@ export default function RideDetail() {
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-2xl font-black">Ride Details</div>
                   <div className="text-base text-slate-500">Ride ID: #{ride.id}</div>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-sm font-bold capitalize ${statusClass(ride.status)}`}>{statusLabel(ride.status)}</span>
+                <span className={`w-fit rounded-full px-3 py-1 text-sm font-bold capitalize ${statusClass(ride.status)}`}>{statusLabel(ride.status)}</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 {routeRows.map((p) => (
-                  <div key={`${p.sequence}-${p.user_id}-${p.point_type}`} className="flex items-start gap-3">
-                    <MapPin className={`mt-1 h-5 w-5 ${p.point_type === 'pickup' ? 'text-emerald-600' : 'text-rose-600'}`} />
-                    <div>
+                  <div key={`${p.sequence}-${p.user_id}-${p.point_type}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-start">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <MapPin className={`mt-1 h-5 w-5 shrink-0 ${p.point_type === 'pickup' ? 'text-emerald-600' : 'text-rose-600'}`} />
+                      <div className="min-w-0">
                       <p className="text-sm text-slate-600">
                         {p.user_name} - {p.point_type === 'pickup' ? 'Pickup' : 'Drop-off'}
                       </p>
-                      <p className="text-xl font-semibold">{p.location_text}</p>
+                      <p className="break-words text-lg font-semibold sm:text-xl">{p.location_text}</p>
                     </div>
-                    <Button variant="ghost" className="ml-auto" onClick={() => window.open(mapsLink(p.location_text), '_blank')}>
+                    </div>
+                    <Button variant="ghost" className="w-full sm:ml-auto sm:w-auto" onClick={() => window.open(mapsLink(p.location_text), '_blank')}>
                       <Navigation className="mr-2 h-4 w-4" />
                       Navigate
                     </Button>
@@ -340,17 +342,17 @@ export default function RideDetail() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t pt-4">
+              <div className="grid grid-cols-1 gap-4 border-t pt-4 sm:grid-cols-2">
                 <div>
                   <p className="flex items-center gap-2 text-sm text-slate-600">
                     <Clock3 className="h-4 w-4" />
                     Time
                   </p>
-                  <p className="text-xl font-semibold">{formatTime12h(ride.time_iso)}</p>
+                  <p className="text-lg font-semibold sm:text-xl">{formatTime12h(ride.time_iso)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-600">{isPrimaryRider ? 'Your Fare' : 'Price'}</p>
-                  <p className="text-3xl font-bold text-brand-600">{money(currentPrice)}</p>
+                  <p className="text-2xl font-bold text-brand-600 sm:text-3xl">{money(currentPrice)}</p>
                 </div>
               </div>
 
@@ -366,7 +368,7 @@ export default function RideDetail() {
               {isPrimaryRider && ride.status === 'confirmed' && !ride.otp_verified && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="text-sm text-emerald-800">Give this OTP to driver to start ride</div>
-                  <div className="mt-1 text-3xl font-black tracking-widest text-emerald-700">{ride.otp_code || 'Waiting for driver to generate OTP...'}</div>
+                  <div className="mt-1 break-all text-2xl font-black tracking-[0.35em] text-emerald-700 sm:text-3xl">{ride.otp_code || 'Waiting for driver to generate OTP...'}</div>
                 </div>
               )}
 
@@ -384,7 +386,7 @@ export default function RideDetail() {
                           setCounterOffer(of.latest_price)
                         }}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <div className="font-semibold">{of.driver_name || `Driver #${of.driver_id}`}</div>
                             <div className="text-sm text-slate-600">
@@ -402,23 +404,27 @@ export default function RideDetail() {
               {isPrimaryRider && (ride.status === 'requested' || ride.status === 'bargaining') && (
                 <div className="border-t pt-4">
                   <div className="text-2xl font-black">Adjust Price (Bargain)</div>
-                  <div className="mt-4 flex flex-wrap items-center gap-4">
-                    <button type="button" className="h-12 w-12 rounded-xl border border-slate-300 text-2xl font-bold" onClick={() => setCounterOffer((v) => Math.max(0, v - 1))}>
-                      -
-                    </button>
-                    <div>
-                      <div className="text-3xl font-black text-emerald-600">{money(counterOffer)}</div>
-                      <div className="text-sm text-slate-500">Counter Offer</div>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="flex items-center gap-3">
+                      <button type="button" className="h-12 w-12 rounded-xl border border-slate-300 text-2xl font-bold" onClick={() => setCounterOffer((v) => Math.max(0, v - 1))}>
+                        -
+                      </button>
+                      <div>
+                        <div className="text-3xl font-black text-emerald-600">{money(counterOffer)}</div>
+                        <div className="text-sm text-slate-500">Counter Offer</div>
+                      </div>
+                      <button type="button" className="h-12 w-12 rounded-xl border border-slate-300 text-2xl font-bold" onClick={() => setCounterOffer((v) => v + 1)}>
+                        +
+                      </button>
                     </div>
-                    <button type="button" className="h-12 w-12 rounded-xl border border-slate-300 text-2xl font-bold" onClick={() => setCounterOffer((v) => v + 1)}>
-                      +
-                    </button>
-                    <button type="button" className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800" onClick={handleUpdateBargain}>
-                      Update
-                    </button>
-                    <button type="button" className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700" onClick={handleConfirmPrice}>
-                      Confirm Price
-                    </button>
+                    <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
+                      <button type="button" className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800" onClick={handleUpdateBargain}>
+                        Update
+                      </button>
+                      <button type="button" className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700" onClick={handleConfirmPrice}>
+                        Confirm Price
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -446,7 +452,7 @@ export default function RideDetail() {
                       value={joinPrice}
                       onChange={(e) => setJoinPrice(Number(e.target.value || 8))}
                     />
-                    <Button onClick={handleJoinRide} disabled={!joinFormValid}>Send Join Request</Button>
+                    <Button className="w-full sm:w-auto" onClick={handleJoinRide} disabled={!joinFormValid}>Send Join Request</Button>
                   </div>
                 </div>
               )}
@@ -489,7 +495,7 @@ export default function RideDetail() {
                       const mine = m.sender_id === uid
                       return (
                         <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-xs rounded-lg p-3 ${mine ? 'bg-brand-600 text-white' : 'border bg-white'}`}>
+                          <div className={`max-w-[85%] rounded-lg p-3 sm:max-w-xs ${mine ? 'bg-brand-600 text-white' : 'border bg-white'}`}>
                             <p className="text-sm">{m.content}</p>
                             <p className={`mt-1 text-xs ${mine ? 'text-blue-100' : 'text-slate-500'}`}>{formatMsgTime(m.created_at)}</p>
                           </div>
@@ -498,7 +504,7 @@ export default function RideDetail() {
                     })
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <textarea
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                     placeholder="Type your message..."
@@ -506,7 +512,7 @@ export default function RideDetail() {
                     onChange={(e) => setMessage(e.target.value)}
                     rows={2}
                   />
-                  <Button onClick={handleSendMessage}>Send</Button>
+                  <Button className="w-full sm:w-auto" onClick={handleSendMessage}>Send</Button>
                 </div>
                 </div>
               )}
@@ -601,7 +607,7 @@ export default function RideDetail() {
               onChange={(e) => setCancelReason(e.target.value)}
               rows={4}
             />
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button variant="ghost" onClick={() => setShowCancelDialog(false)}>
                 Keep Ride
               </Button>
@@ -615,8 +621,8 @@ export default function RideDetail() {
 
       {showJoinRequests && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="flex items-start justify-between">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-2xl font-black">Join Requests</div>
                 <div className="text-base text-slate-500">Other riders wanting to join your ride</div>
@@ -630,7 +636,7 @@ export default function RideDetail() {
               {joinRequests.map((jr) => (
                 <Card key={jr.id}>
                   <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-medium">{jr.joiner_name || 'Rider'}</p>
                         <p className="text-sm text-slate-600">{jr.from_text}</p>
@@ -643,7 +649,7 @@ export default function RideDetail() {
                     <p className="mt-2 text-xs italic text-slate-500">(Price hidden from rider)</p>
                     <p className="mt-2 text-sm text-blue-700">If accepted, this rider saves {money(jr.primary_rider_credit ?? 0)} on their fare.</p>
                     {isPrimaryRider && (
-                      <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         <Button onClick={() => handleRiderJoinDecision(jr.id, true)} disabled={jr.rider_decision !== null || jr.status === 'accepted' || jr.status === 'rejected'}>
                           Accept
                         </Button>

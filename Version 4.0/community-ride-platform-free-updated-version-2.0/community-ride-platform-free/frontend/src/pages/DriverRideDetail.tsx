@@ -254,27 +254,27 @@ export default function DriverRideDetail() {
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <article className="rounded-3xl border border-slate-300 bg-white p-5">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-black">Ride Request Details</h1>
                 <p className="text-base text-slate-500">Ride ID: #{ride.id}</p>
               </div>
-              <span className={`rounded-full px-3 py-1 text-sm font-bold capitalize ${statusClass(ride.status)}`}>{ride.status.split('_').join(' ')}</span>
+              <span className={`w-fit rounded-full px-3 py-1 text-sm font-bold capitalize ${statusClass(ride.status)}`}>{ride.status.split('_').join(' ')}</span>
             </div>
 
             <div className="mt-6 space-y-3">
               {routeRows.map((p) => (
-                <div key={`${p.sequence}-${p.user_id}-${p.point_type}`} className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <MapPin className={`mt-0.5 h-5 w-5 ${p.point_type === 'pickup' ? 'text-emerald-600' : 'text-rose-500'}`} />
-                    <div>
+                <div key={`${p.sequence}-${p.user_id}-${p.point_type}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <MapPin className={`mt-0.5 h-5 w-5 shrink-0 ${p.point_type === 'pickup' ? 'text-emerald-600' : 'text-rose-500'}`} />
+                    <div className="min-w-0">
                       <div className="text-sm text-slate-600">
                         {p.user_name} - {p.point_type === 'pickup' ? 'Pickup' : 'Drop-off'}
                       </div>
-                      <div className="text-xl font-semibold">{p.location_text}</div>
+                      <div className="break-words text-lg font-semibold sm:text-xl">{p.location_text}</div>
                     </div>
                   </div>
-                  <button className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={() => window.open(mapsLink(p.location_text), '_blank')}>
+                  <button className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50 sm:w-auto" onClick={() => window.open(mapsLink(p.location_text), '_blank')}>
                     <Navigation className="h-4 w-4" />
                     Navigate
                   </button>
@@ -308,25 +308,29 @@ export default function DriverRideDetail() {
             {isPending && (
               <div className="mt-6 border-t border-slate-200 pt-6">
                 <div className="text-lg font-bold">Adjust Price (Bargain)</div>
-                <div className="mt-3 flex items-center gap-4">
-                  <button className="rounded-xl border border-slate-300 px-4 py-2 text-xl font-bold" onClick={() => setCounterOffer((v) => Math.max(0, v - 1))}>
-                    -
-                  </button>
-                  <div>
-                    <div className="text-3xl font-bold text-emerald-600">{money(counterOffer)}</div>
-                    <div className="text-sm text-slate-500">Counter Offer</div>
-                  </div>
-                  <button className="rounded-xl border border-slate-300 px-4 py-2 text-xl font-bold" onClick={() => setCounterOffer((v) => v + 1)}>
-                    +
-                  </button>
-                  <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={bargain}>
-                    Update
-                  </button>
-                  {myOffer && (
-                    <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" onClick={confirmMyOffer}>
-                      Confirm Price
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <div className="flex items-center gap-3">
+                    <button className="rounded-xl border border-slate-300 px-4 py-2 text-xl font-bold" onClick={() => setCounterOffer((v) => Math.max(0, v - 1))}>
+                      -
                     </button>
-                  )}
+                    <div>
+                      <div className="text-3xl font-bold text-emerald-600">{money(counterOffer)}</div>
+                      <div className="text-sm text-slate-500">Counter Offer</div>
+                    </div>
+                    <button className="rounded-xl border border-slate-300 px-4 py-2 text-xl font-bold" onClick={() => setCounterOffer((v) => v + 1)}>
+                      +
+                    </button>
+                  </div>
+                  <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
+                    <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={bargain}>
+                      Update
+                    </button>
+                    {myOffer && (
+                      <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" onClick={confirmMyOffer}>
+                        Confirm Price
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {myOffer && (
                   <div className="mt-3 text-sm text-slate-600">
@@ -374,7 +378,7 @@ export default function DriverRideDetail() {
                       const mine = m.sender_id === uid
                       return (
                         <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-xs rounded-lg p-3 ${mine ? 'bg-brand-600 text-white' : 'border bg-white'}`}>
+                          <div className={`max-w-[85%] rounded-lg p-3 sm:max-w-xs ${mine ? 'bg-brand-600 text-white' : 'border bg-white'}`}>
                             <p className="text-sm">{m.content}</p>
                             <p className={`mt-1 text-xs ${mine ? 'text-blue-100' : 'text-slate-500'}`}>{formatMsgTime(m.created_at)}</p>
                           </div>
@@ -383,7 +387,7 @@ export default function DriverRideDetail() {
                     })
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <textarea
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                     placeholder="Type your message..."
@@ -391,7 +395,7 @@ export default function DriverRideDetail() {
                     onChange={(e) => setMessage(e.target.value)}
                     rows={2}
                   />
-                  <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" onClick={handleSendMessage}>
+                  <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:min-w-[96px]" onClick={handleSendMessage}>
                     Send
                   </button>
                 </div>
@@ -475,8 +479,8 @@ export default function DriverRideDetail() {
 
       {showJoinModal && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-5">
-            <div className="flex items-start justify-between">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-black">Join Requests</h3>
                 <p className="text-base text-slate-500">Other riders wanting to join this ride</p>
@@ -492,7 +496,7 @@ export default function DriverRideDetail() {
               ) : (
                 joinRequests.map((jr) => (
                   <div key={jr.id} className="rounded-2xl border border-slate-300 p-4">
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="text-xl font-bold">{jr.joiner_name || 'Rider'}</div>
                         <div className="text-sm text-slate-500">{jr.from_text}</div>
@@ -507,7 +511,7 @@ export default function DriverRideDetail() {
                       </div>
                     </div>
                     <div className="mt-2 text-sm text-blue-700">Primary rider saves {money(jr.primary_rider_credit ?? 0)} if this request is accepted.</div>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <button
                         className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
                         onClick={() => decideJoin(jr.id, true)}

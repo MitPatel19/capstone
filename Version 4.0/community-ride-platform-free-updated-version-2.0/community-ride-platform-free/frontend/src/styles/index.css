@@ -2,4 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+}
+
+html {
+  background: #f1f5f9;
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top, rgba(191, 219, 254, 0.35), transparent 32%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: calc(0.5rem + env(safe-area-inset-top));
+  }
+}

@@ -116,12 +116,12 @@ export default function App() {
 
   return (
     <Layout>
-      <div className="fixed right-4 top-20 z-50 space-y-2 w-[320px] max-w-[90vw]">
+      <div className="fixed inset-x-4 top-20 z-50 mx-auto w-auto max-w-[24rem] space-y-2 sm:inset-x-auto sm:right-4 sm:top-20 sm:mx-0 sm:w-[320px]">
         {toasts.map(t => (
           <div key={t.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
             <div className="font-bold">{t.title}</div>
             <div className="text-sm text-slate-600 mt-1">{t.body}</div>
-            <div className="flex gap-2 mt-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               {t.action && (
                 <button className="text-sm font-semibold text-brand-700 hover:underline" onClick={async () => { if (t.notificationId) { try { await api.post(`/auth/notifications/${t.notificationId}/read`) } catch {} } nav(t.action!.to); setToasts(prev=>prev.filter(x=>x.id!==t.id)) }}>
                   {t.action.label}

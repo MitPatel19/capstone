@@ -66,14 +66,14 @@ export default function CreateRide() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-4xl rounded-3xl border border-slate-300 bg-white p-6">
-      <h1 className="text-2xl font-black">Create Ride Request</h1>
-      <p className="mt-2 text-base text-slate-500">Enter your ride details and we&apos;ll connect you with available drivers</p>
+    <section className="mx-auto w-full max-w-4xl rounded-3xl border border-slate-300 bg-white p-4 sm:p-6">
+      <h1 className="text-2xl font-black sm:text-3xl">Create Ride Request</h1>
+      <p className="mt-2 text-sm text-slate-500 sm:text-base">Enter your ride details and we&apos;ll connect you with available drivers</p>
 
       <form className="mt-6 space-y-6" onSubmit={submit}>
         <div>
           <label className="text-sm font-bold">Pickup Location</label>
-          <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
             <div className="relative">
               <MapPin className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-emerald-600" />
               <PlaceAutocomplete value={pickup} onChange={setPickup} placeholder="Enter pickup address" className="pl-10" />
@@ -89,16 +89,16 @@ export default function CreateRide() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="text-sm font-bold">Drop-off Location(s)</label>
-            <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={addStop}>
+            <button type="button" className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={addStop}>
               <Plus className="h-5 w-5" />
               Add Stop
             </button>
           </div>
           <div className="mt-2 space-y-2">
             {stops.map((s, idx) => (
-              <div key={s.id} className="grid grid-cols-[1fr_auto] gap-2">
+              <div key={s.id} className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <div className="relative">
                   <MapPin className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-rose-500" />
                   <PlaceAutocomplete value={s.text} onChange={(v) => updateStop(s.id, v)} placeholder={`Drop-off ${idx + 1}`} className="pl-10" />

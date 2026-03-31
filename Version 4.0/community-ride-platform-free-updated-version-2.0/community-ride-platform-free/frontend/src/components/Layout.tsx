@@ -36,27 +36,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-slate-100 text-slate-900">
         <RiderTopBar />
-        <main className="mx-auto w-full max-w-6xl px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl px-4 py-5 pb-safe sm:py-8">{children}</main>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-200">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-600 to-emerald-600" />
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/85 backdrop-blur pt-safe">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-600 to-emerald-600 shadow-sm" />
             <div className="leading-tight">
               <div className="font-extrabold">Community Ride</div>
-              <div className="text-xs text-slate-500">Safe coordination for small cities</div>
+              <div className="hidden text-xs text-slate-500 sm:block">Safe coordination for small cities</div>
             </div>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {role && (
               <>
-                <span className="hidden sm:inline text-xs px-2 py-1 rounded-full bg-slate-100 border border-slate-200 capitalize">{role}</span>
-                <Button variant="ghost" onClick={() => { clearSession(); nav('/'); }}>Logout</Button>
+                <span className="inline rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-xs capitalize">{role}</span>
+                <Button variant="ghost" onClick={() => { clearSession(); nav('/') }}>Logout</Button>
               </>
             )}
             {!role && (
@@ -68,11 +68,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-5 pb-safe sm:py-8">{children}</main>
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-slate-600 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <div>© {new Date().getFullYear()} Community Ride Coordination Platform</div>
-          <div className="flex gap-4">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+          <div>&copy; {new Date().getFullYear()} Community Ride Coordination Platform</div>
+          <div className="flex flex-wrap gap-4">
             <a className="hover:underline" href="#">About</a>
             <a className="hover:underline" href="#">Contact</a>
             <a className="hover:underline" href="#">Safety</a>

@@ -38,12 +38,12 @@ function formatTime12h(input: string) {
 function StatCard({ label, value, icon }: { label: string; value: React.ReactNode; icon: React.ReactNode }) {
   return (
     <article className="rounded-3xl border border-slate-300 bg-white p-5">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
           <div className="text-sm text-slate-600">{label}</div>
-          <div className="mt-1 text-4xl font-bold">{value}</div>
+          <div className="mt-1 text-3xl font-bold sm:text-4xl">{value}</div>
         </div>
-        <div className="text-slate-200">{icon}</div>
+        <div className="shrink-0 text-slate-200">{icon}</div>
       </div>
     </article>
   )
@@ -51,40 +51,45 @@ function StatCard({ label, value, icon }: { label: string; value: React.ReactNod
 
 function RideCard({ ride, onOpen }: { ride: Ride; onOpen: () => void }) {
   return (
-    <button onClick={onOpen} className="w-full rounded-3xl border border-slate-300 bg-white p-5 text-left hover:bg-slate-50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-black">{ride.rider_name || `Ride #${ride.id}`}</h3>
-          {statusPill(ride.status)}
-        </div>
-        <div className="text-3xl font-bold text-emerald-600">{money(ride.driver_total_earnings ?? ride.bargain_price ?? ride.posted_price)}</div>
-      </div>
+    <button onClick={onOpen} className="w-full rounded-3xl border border-slate-300 bg-white p-5 text-left transition hover:bg-slate-50">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h3 className="text-lg font-black sm:text-xl">{ride.rider_name || `Ride #${ride.id}`}</h3>
+            {statusPill(ride.status)}
+          </div>
 
-      <div className="mt-2 inline-flex items-center gap-1 text-amber-500">
-        <Star className="h-4 w-4 fill-amber-500" />
-        <span className="text-sm font-semibold">{(ride.rider_rating ?? 0).toFixed(1)}</span>
-      </div>
+          <div className="mt-2 inline-flex items-center gap-1 text-amber-500">
+            <Star className="h-4 w-4 fill-amber-500" />
+            <span className="text-sm font-semibold">{(ride.rider_rating ?? 0).toFixed(1)}</span>
+          </div>
 
-      <div className="mt-6 space-y-2 text-slate-700">
-        <div className="flex items-start gap-2">
-          <MapPin className="mt-0.5 h-5 w-5 text-emerald-600" />
-          <div>
-            <div className="text-sm text-slate-600">Pickup</div>
-            <div className="text-base font-semibold">{ride.pickup_text}</div>
+          <div className="mt-5 space-y-2 text-slate-700">
+            <div className="flex items-start gap-2">
+              <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+              <div className="min-w-0">
+                <div className="text-sm text-slate-600">Pickup</div>
+                <div className="break-words text-base font-semibold">{ride.pickup_text}</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
+              <div className="min-w-0">
+                <div className="text-sm text-slate-600">Drop-off</div>
+                <div className="break-words text-base font-semibold">{ride.first_dropoff_text || 'Destination not set'}</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex items-start gap-2">
-          <MapPin className="mt-0.5 h-5 w-5 text-rose-500" />
-          <div>
-            <div className="text-sm text-slate-600">Drop-off</div>
-            <div className="text-base font-semibold">{ride.first_dropoff_text || 'Destination not set'}</div>
-          </div>
+
+        <div className="text-left sm:text-right">
+          <div className="text-3xl font-bold text-emerald-600">{money(ride.driver_total_earnings ?? ride.bargain_price ?? ride.posted_price)}</div>
         </div>
       </div>
 
-      <div className="mt-6 flex items-center gap-2 text-slate-600">
-        <Clock3 className="h-5 w-5" />
-        <span className="text-base">{formatTime12h(ride.time_iso)}</span>
+      <div className="mt-5 flex items-center gap-2 text-sm text-slate-600 sm:text-base">
+        <Clock3 className="h-5 w-5 shrink-0" />
+        <span>{formatTime12h(ride.time_iso)}</span>
       </div>
     </button>
   )
@@ -158,27 +163,27 @@ export default function DriverDashboard() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <DriverTopBar />
-      <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
         <section>
-          <h1 className="text-4xl font-black">Welcome, {me?.name || 'Driver'}!</h1>
-          <p className="mt-1 text-sm text-slate-600">Accept rides and earn money</p>
+          <h1 className="text-3xl font-black sm:text-4xl">Welcome, {me?.name || 'Driver'}!</h1>
+          <p className="mt-1 text-sm text-slate-600 sm:text-base">Accept rides and earn money</p>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:gap-6">
           {stats.map((s) => (
             <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
           ))}
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-3xl font-black">Available Ride Requests</h2>
+          <h2 className="text-2xl font-black sm:text-3xl">Available Ride Requests</h2>
           {gateMsg && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{gateMsg}</div>}
           {loading ? (
             <div className="text-base text-slate-600">Loading...</div>
           ) : available.length === 0 ? (
             <div className="rounded-2xl border border-slate-300 bg-white p-6 text-base text-slate-600">No available ride requests right now.</div>
           ) : (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
               {available.map((ride) => (
                 <RideCard key={ride.id} ride={ride} onOpen={() => nav(`/driver/ride/${ride.id}`)} />
               ))}
@@ -187,7 +192,7 @@ export default function DriverDashboard() {
         </section>
 
         <section className="space-y-4 pb-8">
-          <h2 className="text-3xl font-black">Your Accepted Rides</h2>
+          <h2 className="text-2xl font-black sm:text-3xl">Your Accepted Rides</h2>
           {loading ? (
             <div className="text-base text-slate-600">Loading...</div>
           ) : mine.length === 0 ? (

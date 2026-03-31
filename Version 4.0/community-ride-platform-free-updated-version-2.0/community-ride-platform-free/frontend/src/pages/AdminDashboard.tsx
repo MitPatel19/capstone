@@ -293,14 +293,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b border-slate-300 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5">
+      <header className="border-b border-slate-300 bg-white pt-safe">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
           <div className="flex items-center gap-3">
             <Shield className="h-8 w-8 text-brand-600" strokeWidth={1.8} />
-            <h1 className="text-3xl font-black">Admin Dashboard</h1>
+            <h1 className="text-2xl font-black sm:text-3xl">Admin Dashboard</h1>
           </div>
           <button
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
             onClick={() => {
               clearSession()
               nav('/login')
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <article key={stat.label} className="rounded-3xl border border-slate-300 bg-white px-8 py-8">
@@ -327,8 +327,8 @@ export default function AdminDashboard() {
           ))}
         </section>
 
-        <section className="rounded-full bg-slate-200 p-1.5">
-          <div className="grid grid-cols-2 md:grid-cols-4">
+        <section className="overflow-x-auto rounded-[1.75rem] bg-slate-200 p-1.5">
+          <div className="grid min-w-[36rem] grid-cols-4 md:min-w-0">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-300 bg-white p-8">
+        <section className="rounded-3xl border border-slate-300 bg-white p-4 sm:p-8">
           {loading && <div className="text-base text-slate-600">Loading...</div>}
           {!loading && msg && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{msg}</div>}
 
@@ -853,7 +853,7 @@ export default function AdminDashboard() {
 
       {selectedReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4" onClick={() => setSelectedReport(null)}>
-          <div className="w-full max-w-3xl rounded-3xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-2xl font-black">{selectedReport.subject}</div>
@@ -909,7 +909,7 @@ export default function AdminDashboard() {
                   placeholder="Add internal resolution notes"
                 />
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={saveReportReview}>
                   Save Review
                 </button>
@@ -928,7 +928,7 @@ export default function AdminDashboard() {
           onClick={() => setSelectedDocument(null)}
         >
           <div
-            className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl"
+            className="relative max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-4">
@@ -959,7 +959,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="bg-[radial-gradient(circle_at_top,_rgba(226,232,240,0.7),_rgba(248,250,252,1)_55%)] p-6">
-              <div className="flex min-h-[420px] items-center justify-center overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-inner">
+              <div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-inner sm:min-h-[420px]">
                 {documentLoadFailed ? (
                   <div className="flex max-w-md flex-col items-center px-6 py-12 text-center">
                     <div className="mb-4 rounded-full bg-slate-100 p-4 text-slate-500">
