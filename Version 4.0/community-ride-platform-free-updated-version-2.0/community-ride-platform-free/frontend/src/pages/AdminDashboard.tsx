@@ -90,12 +90,13 @@ type BillingOverview = {
   paid_at?: string | null
 }
 
-type TabKey = 'pending' | 'users' | 'fees' | 'reports'
+type TabKey = 'pending' | 'users' | 'fees' | 'cities' | 'reports'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'pending', label: 'Pending Approvals' },
   { key: 'users', label: 'User Management' },
   { key: 'fees', label: 'Billing & Fees' },
+  { key: 'cities', label: 'City Tax Management' },
   { key: 'reports', label: 'Reports & Flags' },
 ]
 
@@ -328,7 +329,7 @@ export default function AdminDashboard() {
         </section>
 
         <section className="overflow-x-auto rounded-[1.75rem] bg-slate-200 p-1.5">
-          <div className="grid min-w-[36rem] grid-cols-4 md:min-w-0">
+          <div className="grid min-w-[50rem] grid-cols-5 md:min-w-0">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -576,91 +577,6 @@ export default function AdminDashboard() {
                 </table>
               </div>
 
-              <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <h3 className="text-lg font-black">City Tax Management</h3>
-                <p className="mt-1 text-sm text-slate-600">Add cities and control the province and tax profile used on bi-weekly bills.</p>
-                <div className="mt-3 flex gap-2">
-                  <input
-                    className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                    placeholder="Add city name"
-                    value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
-                  />
-                  <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={addCity}>
-                    Add City
-                  </button>
-                </div>
-                <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                  {cities.map((city) => (
-                    <div key={city.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-lg font-black">{city.name}</div>
-                          <div className="text-xs text-slate-500">Used to calculate platform bill tax snapshots</div>
-                        </div>
-                        <button className="text-sm font-semibold text-rose-600 hover:underline" onClick={() => removeCity(city.id)}>
-                          remove
-                        </button>
-                      </div>
-                      <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <input
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                          value={cityDrafts[city.id]?.province_name ?? city.province_name}
-                          onChange={(e) =>
-                            setCityDrafts((prev) => ({
-                              ...prev,
-                              [city.id]: {
-                                ...prev[city.id],
-                                province_name: e.target.value,
-                                tax_name: prev[city.id]?.tax_name ?? city.tax_name,
-                                tax_rate: prev[city.id]?.tax_rate ?? city.tax_rate,
-                              },
-                            }))
-                          }
-                          placeholder="Province"
-                        />
-                        <input
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                          value={cityDrafts[city.id]?.tax_name ?? city.tax_name}
-                          onChange={(e) =>
-                            setCityDrafts((prev) => ({
-                              ...prev,
-                              [city.id]: {
-                                ...prev[city.id],
-                                province_name: prev[city.id]?.province_name ?? city.province_name,
-                                tax_name: e.target.value,
-                                tax_rate: prev[city.id]?.tax_rate ?? city.tax_rate,
-                              },
-                            }))
-                          }
-                          placeholder="Tax name"
-                        />
-                        <input
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                          type="number"
-                          step="0.01"
-                          value={cityDrafts[city.id]?.tax_rate ?? city.tax_rate}
-                          onChange={(e) =>
-                            setCityDrafts((prev) => ({
-                              ...prev,
-                              [city.id]: {
-                                ...prev[city.id],
-                                province_name: prev[city.id]?.province_name ?? city.province_name,
-                                tax_name: prev[city.id]?.tax_name ?? city.tax_name,
-                                tax_rate: Number(e.target.value || 0),
-                              },
-                            }))
-                          }
-                          placeholder="Tax rate"
-                        />
-                      </div>
-                      <button className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={() => saveCityTax(city.id)}>
-                        Save Tax Settings
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
@@ -788,6 +704,98 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {!loading && activeTab === 'cities' && (
+            <div>
+              <h2 className="text-2xl font-black">City Tax Management</h2>
+              <p className="mt-2 text-base text-slate-600">Add cities and control the province and tax profile used on bi-weekly bills.</p>
+
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                    placeholder="Add city name"
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                  />
+                  <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={addCity}>
+                    Add City
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                {cities.map((city) => (
+                  <div key={city.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-lg font-black">{city.name}</div>
+                        <div className="text-xs text-slate-500">Used to calculate platform bill tax snapshots</div>
+                      </div>
+                      <button className="text-sm font-semibold text-rose-600 hover:underline" onClick={() => removeCity(city.id)}>
+                        remove
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <input
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                        value={cityDrafts[city.id]?.province_name ?? city.province_name}
+                        onChange={(e) =>
+                          setCityDrafts((prev) => ({
+                            ...prev,
+                            [city.id]: {
+                              ...prev[city.id],
+                              province_name: e.target.value,
+                              tax_name: prev[city.id]?.tax_name ?? city.tax_name,
+                              tax_rate: prev[city.id]?.tax_rate ?? city.tax_rate,
+                            },
+                          }))
+                        }
+                        placeholder="Province"
+                      />
+                      <input
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                        value={cityDrafts[city.id]?.tax_name ?? city.tax_name}
+                        onChange={(e) =>
+                          setCityDrafts((prev) => ({
+                            ...prev,
+                            [city.id]: {
+                              ...prev[city.id],
+                              province_name: prev[city.id]?.province_name ?? city.province_name,
+                              tax_name: e.target.value,
+                              tax_rate: prev[city.id]?.tax_rate ?? city.tax_rate,
+                            },
+                          }))
+                        }
+                        placeholder="Tax name"
+                      />
+                      <input
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                        type="number"
+                        step="0.01"
+                        value={cityDrafts[city.id]?.tax_rate ?? city.tax_rate}
+                        onChange={(e) =>
+                          setCityDrafts((prev) => ({
+                            ...prev,
+                            [city.id]: {
+                              ...prev[city.id],
+                              province_name: prev[city.id]?.province_name ?? city.province_name,
+                              tax_name: prev[city.id]?.tax_name ?? city.tax_name,
+                              tax_rate: Number(e.target.value || 0),
+                            },
+                          }))
+                        }
+                        placeholder="Tax rate"
+                      />
+                    </div>
+                    <button className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700" onClick={() => saveCityTax(city.id)}>
+                      Save Tax Settings
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
