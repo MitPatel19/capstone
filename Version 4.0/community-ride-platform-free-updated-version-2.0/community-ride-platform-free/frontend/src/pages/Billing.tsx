@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CalendarDays, CreditCard, ReceiptText, ShieldCheck, Wallet } from 'lucide-react'
 import { api, getRole } from '../api'
 import { DriverTopBar } from '../components/DriverTopBar'
@@ -108,6 +108,7 @@ function statusPill(status: string) {
 export default function Billing() {
   const role = getRole()
   const isDriver = role === 'driver'
+  const declarationsRef = useRef<HTMLElement | null>(null)
   const [bill, setBill] = useState<Bill | null>(null)
   const [history, setHistory] = useState<Bill[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
@@ -223,6 +224,27 @@ export default function Billing() {
 
   const content = (
     <div className="space-y-6">
+      {!isDriver && pendingDeclarations.length > 0 && (
+        <section className="rounded-3xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Action Needed</div>
+              <h2 className="mt-2 text-xl font-black text-slate-900 sm:text-2xl">Declare Direct Ride Payments</h2>
+              <p className="mt-2 text-sm text-slate-700">
+                {pendingDeclarations.length} completed ride payment declaration{pendingDeclarations.length > 1 ? 's are' : ' is'} waiting for you.
+                Tell the app how you paid the driver so the ride is fully recorded.
+              </p>
+            </div>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => declarationsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              Open Declaration Form
+            </Button>
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-3xl border border-slate-300 bg-white p-6 lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -474,7 +496,7 @@ export default function Billing() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-300 bg-white p-6">
+      <section ref={declarationsRef} className="rounded-3xl border border-slate-300 bg-white p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black">{isDriver ? 'Direct Ride Payment Declarations' : 'Declare Direct Ride Payments'}</h2>
@@ -540,7 +562,7 @@ export default function Billing() {
                 ) : (
                   <div className="mt-4 grid gap-3 md:grid-cols-[220px,1fr,140px]">
                     <select
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                      className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       value={formState[row.ride_id]?.payment_method ?? ''}
                       onChange={(event) =>
                         setFormState((prev) => ({
@@ -561,7 +583,7 @@ export default function Billing() {
                       ))}
                     </select>
                     <input
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                      className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       placeholder="Optional note for admin or driver"
                       value={formState[row.ride_id]?.note ?? ''}
                       onChange={(event) =>
@@ -576,6 +598,7 @@ export default function Billing() {
                       }
                     />
                     <Button
+                      className="w-full md:w-auto"
                       onClick={() => saveDeclaration(row.ride_id)}
                       disabled={!!formState[row.ride_id]?.saving}
                     >
