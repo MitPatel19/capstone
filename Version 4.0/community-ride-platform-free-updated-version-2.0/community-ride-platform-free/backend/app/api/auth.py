@@ -11,13 +11,14 @@ import uuid
 from app.core.auth import hash_password, verify_password, create_access_token, get_current_user, require_role
 from app.core.settings import settings
 from app.db.session import get_db
-from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, UserProfile, Rating, Ride, RideStatus, JoinRequest, JoinRequestStatus, City, DriverCitySelection, RiderDefaultRoute, DriverVehicle, Notification
+from app.models import User, UserRole, AccountStatus, DriverProfile, DriverApprovalStatus, UserProfile, Rating, Ride, RideStatus, JoinRequest, JoinRequestStatus, City, DriverCitySelection, RiderDefaultRoute, DriverVehicle, Notification
 from app.schemas import Token, ProfileOut, ProfileUpdateIn, ChangePasswordIn, MetricsOut, RiderStatsOut, DriverDocsOut, NotificationOut, AuthActionOut
 from app.schemas import SignupRiderIn, LoginIn, ForgotPasswordIn, ResetPasswordIn, ResendVerificationIn
 from app.schemas import CityOut, DriverCityOut, DriverCitySelectIn, RiderDefaultRouteOut, RiderDefaultRouteIn
 from app.services.emailer import send_email
 from app.services.billing import ensure_user_can_change_city, sync_billing_notifications
 from app.services.license_monitor import parse_license_expiry_date, sync_driver_license_notifications
+from app.ws.manager import manager
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -157,6 +158,35 @@ def driver_join_bonus_total(db: Session, ride_id: int) -> float:
         )
     ).all()
     return round(sum(float(r.driver_bonus or 0.0) for r in rows), 2)
+
+
+def live_presence_counts(db: Session) -> tuple[int, int]:
+    active_user_ids = manager.get_active_user_ids()
+    if not active_user_ids:
+        return 0, 0
+
+    active_riders = len(
+        db.scalars(
+            select(User.id).where(
+                User.id.in_(active_user_ids),
+                User.role == UserRole.rider,
+                User.status == AccountStatus.active,
+            )
+        ).all()
+    )
+    active_drivers = len(
+        db.scalars(
+            select(User.id)
+            .join(DriverProfile, DriverProfile.user_id == User.id)
+            .where(
+                User.id.in_(active_user_ids),
+                User.role == UserRole.driver,
+                User.status == AccountStatus.active,
+                DriverProfile.approval_status == DriverApprovalStatus.approved,
+            )
+        ).all()
+    )
+    return active_riders, active_drivers
 
 
 @router.post("/signup/rider", response_model=AuthActionOut)
@@ -463,6 +493,7 @@ def delete_avatar(user: User = Depends(get_current_user), db: Session = Depends(
 @router.get("/metrics", response_model=MetricsOut)
 def metrics(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     avg, _ = rating_summary(db, user.id)
+    active_riders, active_drivers = live_presence_counts(db)
     rider_total = 0
     rider_active = 0
     if user.role == UserRole.rider:
@@ -503,6 +534,8 @@ def metrics(user: User = Depends(get_current_user), db: Session = Depends(get_db
         active_rides=rider_active,
         total_rides=rider_total,
         rating_avg=avg,
+        active_riders=active_riders,
+        active_drivers=active_drivers,
         accepted_rides=driver_active,
         todays_earnings=todays_earnings,
         total_driver_rides=driver_total,

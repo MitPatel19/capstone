@@ -9,7 +9,7 @@ from sqlalchemy import text
 from app.core.settings import settings
 from app.db.session import engine, Base, SessionLocal
 from app.services.seed import ensure_seed
-from app.api.auth import router as auth_router
+from app.api.auth import live_presence_counts, router as auth_router
 from app.api.rides import router as rides_router
 from app.api.admin import router as admin_router
 from app.api.billing import router as billing_router
@@ -24,6 +24,8 @@ upload_dir.mkdir(parents=True, exist_ok=True)
 
 frontend_dist_dir = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 frontend_index_path = frontend_dist_dir / "index.html"
+presentation_path = Path(__file__).resolve().parents[2] / "project-presentation.html"
+presentation_qr_path = Path(__file__).resolve().parents[2] / "presentation-qr.svg"
 
 app = FastAPI(title=settings.APP_NAME)
 
@@ -161,11 +163,42 @@ def health():
     return {"status":"ok"}
 
 
+async def broadcast_presence_update():
+    db = SessionLocal()
+    try:
+        active_riders, active_drivers = live_presence_counts(db)
+    finally:
+        db.close()
+    await manager.broadcast(
+        {
+            "type": "presence_update",
+            "active_riders": active_riders,
+            "active_drivers": active_drivers,
+        }
+    )
+
+
 @app.get("/", include_in_schema=False)
 def serve_frontend_root():
     if frontend_index_path.exists():
         return FileResponse(frontend_index_path)
     return {"status": "ok", "frontend_built": False}
+
+
+@app.get("/presentation", include_in_schema=False)
+@app.get("/presentation.html", include_in_schema=False)
+def serve_project_presentation():
+    if presentation_path.exists():
+        return FileResponse(presentation_path)
+    raise HTTPException(status_code=404, detail="Presentation not found")
+
+
+@app.get("/presentation-qr.svg", include_in_schema=False)
+@app.get("/presentation/qr", include_in_schema=False)
+def serve_project_presentation_qr():
+    if presentation_qr_path.exists():
+        return FileResponse(presentation_qr_path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Presentation QR not found")
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
@@ -179,6 +212,7 @@ async def websocket_endpoint(ws: WebSocket):
         await ws.close(code=4401)
         return
     await manager.connect(uid, ws)
+    await broadcast_presence_update()
     try:
         while True:
             # keep alive + optional client pings
@@ -187,8 +221,10 @@ async def websocket_endpoint(ws: WebSocket):
                 await ws.send_text("pong")
     except WebSocketDisconnect:
         await manager.disconnect(uid, ws)
+        await broadcast_presence_update()
     except Exception:
         await manager.disconnect(uid, ws)
+        await broadcast_presence_update()
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

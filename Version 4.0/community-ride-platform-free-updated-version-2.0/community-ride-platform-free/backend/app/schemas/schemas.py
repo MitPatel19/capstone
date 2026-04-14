@@ -289,6 +289,8 @@ class MetricsOut(BaseModel):
     active_rides: int = 0
     total_rides: int = 0
     rating_avg: float = 0.0
+    active_riders: int = 0
+    active_drivers: int = 0
     # Driver
     accepted_rides: int = 0
     todays_earnings: float = 0.0

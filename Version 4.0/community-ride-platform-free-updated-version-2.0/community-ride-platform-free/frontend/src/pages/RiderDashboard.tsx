@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CarFront, Clock3, MapPin, Plus, Star } from 'lucide-react'
+import { CarFront, Clock3, MapPin, Plus, Star, Users } from 'lucide-react'
 import { api } from '../api'
 import { Button } from '../components/Button'
 import { money } from '../utils'
+import { wsClient } from '../ws'
 
 type Ride = {
   id: number
@@ -19,7 +20,7 @@ type Ride = {
   driver_rating?: number
   driver_vehicle?: string
 }
-type Metrics = { active_rides: number; total_rides: number; rating_avg: number }
+type Metrics = { active_rides: number; total_rides: number; rating_avg: number; active_riders: number; active_drivers: number }
 type Me = { id: number; name: string }
 
 function StatCard({ label, value, icon }: { label: string; value: React.ReactNode; icon: React.ReactNode }) {
@@ -122,13 +123,36 @@ export default function RiderDashboard() {
     setActive(rides.filter((r) => r.status === 'confirmed' || r.status === 'in_progress'))
     setPending(rides.filter((r) => r.status === 'requested' || r.status === 'bargaining'))
     setJoinable((act.data || []).filter((r: Ride) => r.status === 'confirmed' || r.status === 'in_progress'))
-    setMetrics({ active_rides: met.data.active_rides, total_rides: met.data.total_rides, rating_avg: met.data.rating_avg })
+    setMetrics({
+      active_rides: met.data.active_rides,
+      total_rides: met.data.total_rides,
+      rating_avg: met.data.rating_avg,
+      active_riders: met.data.active_riders,
+      active_drivers: met.data.active_drivers,
+    })
     setMe(meRes.data)
     setLoading(false)
   }
 
   useEffect(() => {
     load()
+  }, [])
+
+  useEffect(() => {
+    const unsub = wsClient.on((msg) => {
+      if (msg?.type === 'presence_update') {
+        setMetrics((current) => ({
+          active_rides: current?.active_rides ?? 0,
+          total_rides: current?.total_rides ?? 0,
+          rating_avg: current?.rating_avg ?? 0,
+          active_riders: Number(msg.active_riders ?? 0),
+          active_drivers: Number(msg.active_drivers ?? 0),
+        }))
+      }
+    })
+    return () => {
+      void unsub()
+    }
   }, [])
 
   return (
@@ -138,7 +162,7 @@ export default function RiderDashboard() {
         <p className="mt-1 text-sm text-slate-600 sm:text-base">Manage your rides and travel safely</p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3 md:gap-6">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5 md:gap-6">
         <StatCard label="Active Rides" value={metrics?.active_rides ?? (loading ? '-' : 0)} icon={<CarFront className="h-11 w-11 text-blue-200" />} />
         <StatCard
           label="Your Rating"
@@ -151,6 +175,8 @@ export default function RiderDashboard() {
           icon={<Star className="h-11 w-11 text-amber-200" />}
         />
         <StatCard label="Total Rides" value={metrics?.total_rides ?? (loading ? '-' : 0)} icon={<MapPin className="h-11 w-11 text-emerald-200" />} />
+        <StatCard label="Active Riders" value={metrics?.active_riders ?? (loading ? '-' : 0)} icon={<Users className="h-11 w-11 text-sky-200" />} />
+        <StatCard label="Active Drivers" value={metrics?.active_drivers ?? (loading ? '-' : 0)} icon={<CarFront className="h-11 w-11 text-emerald-200" />} />
       </section>
 
       <div>

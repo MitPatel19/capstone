@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowUpRight, Clock3, MapPin, Star, Wallet, CarFront } from 'lucide-react'
+import { ArrowUpRight, Clock3, MapPin, Star, Wallet, CarFront, Users } from 'lucide-react'
 import { api } from '../api'
 import { DriverTopBar } from '../components/DriverTopBar'
 import { money } from '../utils'
@@ -19,7 +19,14 @@ type Ride = {
   rider_name?: string
   rider_rating?: number
 }
-type Metrics = { accepted_rides: number; rating_avg: number; todays_earnings: number; total_driver_rides: number }
+type Metrics = {
+  accepted_rides: number
+  rating_avg: number
+  todays_earnings: number
+  total_driver_rides: number
+  active_riders: number
+  active_drivers: number
+}
 type Me = { name: string }
 
 function statusPill(status: string) {
@@ -135,6 +142,16 @@ export default function DriverDashboard() {
       if (msg?.type === 'ride_market_update' || msg?.type === 'ride_update') {
         void load()
       }
+      if (msg?.type === 'presence_update') {
+        setMetrics((current) => ({
+          accepted_rides: current?.accepted_rides ?? 0,
+          rating_avg: current?.rating_avg ?? 0,
+          todays_earnings: current?.todays_earnings ?? 0,
+          total_driver_rides: current?.total_driver_rides ?? 0,
+          active_riders: Number(msg.active_riders ?? 0),
+          active_drivers: Number(msg.active_drivers ?? 0),
+        }))
+      }
     })
     return () => {
       void unsub()
@@ -156,6 +173,8 @@ export default function DriverDashboard() {
       },
       { label: "Today's Earnings", value: money(metrics?.todays_earnings ?? 0), icon: <Wallet className="h-11 w-11 text-emerald-200" /> },
       { label: 'Total Rides', value: metrics?.total_driver_rides ?? 0, icon: <ArrowUpRight className="h-11 w-11 text-blue-200" /> },
+      { label: 'Active Riders', value: metrics?.active_riders ?? 0, icon: <Users className="h-11 w-11 text-sky-200" /> },
+      { label: 'Active Drivers', value: metrics?.active_drivers ?? 0, icon: <CarFront className="h-11 w-11 text-emerald-200" /> },
     ],
     [metrics]
   )
@@ -169,7 +188,7 @@ export default function DriverDashboard() {
           <p className="mt-1 text-sm text-slate-600 sm:text-base">Accept rides and earn money</p>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:gap-6">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6 md:gap-6">
           {stats.map((s) => (
             <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
           ))}

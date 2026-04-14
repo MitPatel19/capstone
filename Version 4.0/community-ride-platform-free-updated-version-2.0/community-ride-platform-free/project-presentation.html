@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Community Ride Coordination Platform Presentation</title>
+  <style>
+    :root {
+      --bg: #f7f6f1;
+      --surface: rgba(255,255,255,.78);
+      --ink: #102133;
+      --muted: #586779;
+      --line: rgba(16,33,51,.1);
+      --navy: #102133;
+      --navy-soft: #1c3148;
+      --emerald: #14b87a;
+      --coral: #ff8f62;
+      --gold: #f0c45d;
+      --shadow: 0 24px 60px rgba(16,33,51,.12);
+      --shadow-strong: 0 26px 80px rgba(16,33,51,.22);
+      --r: 26px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI Variable", "Trebuchet MS", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(20,184,122,.16), transparent 26%),
+        radial-gradient(circle at top right, rgba(255,143,98,.13), transparent 22%),
+        linear-gradient(180deg, #fdfcf8, var(--bg));
+    }
+    body { overflow: hidden; }
+    .deck {
+      min-height: 100vh;
+      display: grid;
+      justify-items: center;
+      align-items: center;
+      gap: 18px;
+      padding: 18px;
+    }
+    .stage-shell {
+      position: relative;
+      width: calc(1600px * var(--scale, 1));
+      height: calc(900px * var(--scale, 1));
+    }
+    .stage {
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 1600px;
+      height: 900px;
+      transform: scale(var(--scale, 1));
+      transform-origin: top left;
+      overflow: hidden;
+      border-radius: 34px;
+      border: 1px solid rgba(16,33,51,.09);
+      box-shadow: 0 34px 90px rgba(16,33,51,.16);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.64)),
+        linear-gradient(90deg, rgba(20,184,122,.03), rgba(255,143,98,.02));
+    }
+    .stage::after {
+      content: "";
+      position: absolute;
+      inset: auto auto -110px -80px;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(20,184,122,.12), transparent 70%);
+      pointer-events: none;
+      filter: blur(8px);
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(255,255,255,.22), rgba(255,255,255,0)),
+        linear-gradient(90deg, rgba(16,33,51,.028) 1px, transparent 1px),
+        linear-gradient(rgba(16,33,51,.02) 1px, transparent 1px);
+      background-size: auto, 36px 36px, 36px 36px;
+      pointer-events: none;
+      opacity: .38;
+    }
+    .slide {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 1600px;
+      height: 900px;
+      padding: 58px 68px 54px;
+      gap: 18px;
+      align-content: start;
+      overflow: hidden;
+    }
+    .slide.active { display: grid; animation: enter .28s ease; }
+    @keyframes enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes softRise {
+      from { opacity: 0; transform: translateY(24px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes shimmerFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 11px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.76);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      backdrop-filter: blur(12px);
+    }
+    .eyebrow::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--emerald), #47dcb3);
+      box-shadow: 0 0 0 6px rgba(20,184,122,.11);
+    }
+    h1, h2, h3, p, ul { margin: 0; }
+    h1 {
+      font-size: clamp(54px, 5.7vw, 98px);
+      line-height: .93;
+      letter-spacing: -.05em;
+      font-weight: 900;
+      max-width: 11ch;
+      text-wrap: balance;
+    }
+    h2 {
+      font-size: clamp(42px, 4.1vw, 68px);
+      line-height: .98;
+      letter-spacing: -.045em;
+      font-weight: 900;
+      max-width: 14ch;
+      text-wrap: balance;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: clamp(22px, 2vw, 29px);
+      line-height: 1.48;
+      max-width: 58rem;
+      letter-spacing: -.01em;
+    }
+    .hero {
+      grid-template-columns: 1.1fr .9fr;
+      align-items: center;
+    }
+    .stack, .panel, .card, .mini, .quote, .road {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+    }
+    .panel:hover, .card:hover, .mini:hover, .road:hover, .phone:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 46px rgba(16,33,51,.12);
+      border-color: rgba(20,184,122,.16);
+    }
+    .panel, .card, .mini, .quote, .road { padding: 24px; }
+    .hero .copy { display: grid; gap: 18px; }
+    .pills, .tags, .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pill, .tag {
+      padding: 12px 15px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: -.01em;
+    }
+    .visual {
+      min-height: 500px;
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+      background:
+        linear-gradient(140deg, rgba(20,184,122,.13), transparent 40%),
+        linear-gradient(220deg, rgba(255,143,98,.12), transparent 48%),
+        rgba(255,255,255,.74);
+      animation: shimmerFloat 8s ease-in-out infinite;
+    }
+    .visual .route {
+      position: absolute;
+      left: 28px;
+      top: 44px;
+      width: 42%;
+      height: 58%;
+      border: 2px dashed rgba(20,184,122,.34);
+      border-radius: 30px;
+      transform: rotate(-8deg);
+    }
+    .phones { position: absolute; right: 24px; top: 28px; width: 47%; display: grid; gap: 14px; }
+    .phone {
+      border-radius: 30px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,250,252,.9));
+      min-height: 180px;
+      box-shadow: 0 16px 34px rgba(16,33,51,.08);
+    }
+    .phone::before {
+      content: "";
+      display: block;
+      width: 34%;
+      height: 6px;
+      margin: 2px auto 12px;
+      border-radius: 999px;
+      background: rgba(16,33,51,.15);
+    }
+    .phone h3, .card h3, .mini h3, .panel h3 { font-size: 21px; font-weight: 900; margin-bottom: 10px; letter-spacing: -.02em; }
+    .phone p, .card p, .mini p, .panel p, li { color: var(--muted); line-height: 1.6; font-size: 17px; }
+    .floats { position: absolute; left: 26px; bottom: 24px; width: 38%; display: grid; gap: 12px; }
+    .float {
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(16,33,51,.95);
+      color: #fff;
+      box-shadow: 0 18px 40px rgba(16,33,51,.24);
+    }
+    .float small { display: block; opacity: .72; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+    .float strong { font-size: 31px; line-height: 1.06; letter-spacing: -.03em; }
+    .qr-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: fit-content;
+      max-width: 390px;
+      padding: 12px 14px;
+      border-radius: 22px;
+      border: 1px solid rgba(16,33,51,.08);
+      background: rgba(255,255,255,.84);
+      box-shadow: 0 14px 34px rgba(16,33,51,.1);
+      backdrop-filter: blur(14px);
+    }
+    .qr-card img {
+      width: 84px;
+      height: 84px;
+      border-radius: 14px;
+      border: 1px solid rgba(16,33,51,.08);
+      background: #fff;
+      padding: 6px;
+      flex: 0 0 auto;
+    }
+    .qr-text {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+    .qr-text strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      color: var(--navy);
+    }
+    .qr-text span {
+      font-size: 13px;
+      line-height: 1.35;
+      color: var(--muted);
+      word-break: break-word;
+    }
+    .qr-hero {
+      margin-top: 6px;
+    }
+    .qr-closing {
+      margin-top: 18px;
+    }
+    .grid2, .grid3, .grid5 { display: grid; gap: 18px; }
+    .grid2 { grid-template-columns: 1fr 1fr; }
+    .grid3 { grid-template-columns: repeat(3, 1fr); }
+    .grid5 { grid-template-columns: repeat(5, 1fr); }
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-content: start;
+    }
+    .trust-card {
+      padding: 20px;
+      min-height: 0;
+    }
+    .trust-card h3 {
+      font-size: 19px;
+      margin-bottom: 10px;
+    }
+    .trust-card .list {
+      gap: 8px;
+    }
+    .trust-card .row {
+      align-items: flex-start;
+      gap: 10px;
+      padding-bottom: 8px;
+    }
+    .trust-card .row strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+    .trust-card .row div div {
+      font-size: 14px;
+      line-height: 1.42;
+    }
+    .trust-card p {
+      margin-top: 10px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .comp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-content: start;
+    }
+    .comp-card {
+      padding: 18px 18px 16px;
+      min-height: 0;
+    }
+    .comp-card h3 {
+      font-size: 19px;
+      margin-bottom: 8px;
+    }
+    .comp-card ul {
+      padding-left: 18px;
+      gap: 8px;
+    }
+    .comp-card li {
+      font-size: 14px;
+      line-height: 1.48;
+    }
+    .comp-card.featured {
+      border-color: rgba(20,184,122,.22);
+      box-shadow: 0 20px 44px rgba(16,33,51,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.86), rgba(241,251,246,.84));
+    }
+    .icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(16,33,51,.06);
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    .number {
+      width: 40px;
+      height: 40px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(255,143,98,.22), rgba(255,143,98,.06));
+      color: #d56f47;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    .card ul { padding-left: 21px; display: grid; gap: 11px; }
+    .problem {
+      grid-template-columns: 1fr 1fr;
+      min-height: 440px;
+    }
+    .chaos, .calm { position: relative; overflow: hidden; }
+    .chaos { background: linear-gradient(160deg, rgba(255,143,98,.16), rgba(255,255,255,.76)); }
+    .calm { background: linear-gradient(160deg, rgba(20,184,122,.13), rgba(255,255,255,.78)); display: grid; align-items: end; }
+    .bubble {
+      width: fit-content;
+      max-width: 80%;
+      border-radius: 20px 20px 20px 7px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,.94);
+      border: 1px solid var(--line);
+      margin-top: 16px;
+      box-shadow: 0 10px 24px rgba(16,33,51,.08);
+      font-size: 18px;
+      line-height: 1.42;
+    }
+    .bubble.alt { margin-left: auto; border-radius: 18px 18px 6px 18px; background: rgba(16,33,51,.94); color: #fff; }
+    .dash {
+      border-radius: 24px;
+      padding: 20px;
+      background: linear-gradient(180deg, #fff, #f9fbfd);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px rgba(16,33,51,.1);
+    }
+    .dash-top, .row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .dash-top { margin-bottom: 12px; }
+    .chip {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(20,184,122,.12);
+      color: #0f8f66;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+    .stat { border-radius: 18px; padding: 12px; background: rgba(16,33,51,.05); }
+    .stat strong, .metric strong, .close strong { display: block; font-size: 29px; font-weight: 900; margin-top: 4px; letter-spacing: -.03em; }
+    .list { display: grid; gap: 10px; }
+    .row { border-bottom: 1px solid rgba(16,33,51,.08); padding-bottom: 10px; }
+    .row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .journey { position: relative; }
+    .journey::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(20,184,122,.25), rgba(255,143,98,.18));
+      z-index: 0;
+    }
+    .journey .card { position: relative; z-index: 1; }
+    .features { grid-template-columns: repeat(3, 1fr); }
+    .feature { position: relative; padding-top: 18px; }
+    .feature::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--emerald), var(--coral));
+    }
+    .timeline { display: grid; gap: 12px; }
+    .step {
+      position: relative;
+      padding: 16px 16px 16px 52px;
+      border-radius: 20px;
+      background: rgba(16,33,51,.05);
+      border: 1px solid rgba(16,33,51,.06);
+    }
+    .step::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--emerald), #62ddb6);
+      box-shadow: 0 0 0 6px rgba(20,184,122,.1);
+    }
+    .step strong { display: block; font-size: 16px; margin-bottom: 4px; }
+    .arch { grid-template-columns: 1fr .9fr 1fr; align-items: center; min-height: 360px; }
+    .core {
+      min-height: 210px;
+      border-radius: 28px;
+      background: linear-gradient(160deg, rgba(16,33,51,.97), rgba(24,48,76,.96));
+      color: #fff;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      box-shadow: 0 22px 48px rgba(16,33,51,.24);
+    }
+    .core strong { display: block; font-size: 33px; font-weight: 900; margin-bottom: 8px; letter-spacing: -.03em; }
+    .quote { grid-template-columns: 1.1fr .9fr; min-height: 360px; }
+    .big {
+      font-size: clamp(34px, 2.9vw, 48px);
+      line-height: 1.18;
+      letter-spacing: -.04em;
+      font-weight: 900;
+      max-width: 18ch;
+    }
+    .bar {
+      width: 78px;
+      height: 6px;
+      border-radius: 999px;
+      margin: 16px 0;
+      background: linear-gradient(90deg, var(--emerald), var(--coral));
+    }
+    .metrics { display: grid; gap: 12px; }
+    .metric, .close {
+      border-radius: 22px;
+      padding: 16px;
+      background: rgba(16,33,51,.05);
+    }
+    .roadmap { grid-template-columns: 1.1fr .9fr; min-height: 390px; }
+    .path {
+      position: relative;
+      padding-left: 52px;
+      display: grid;
+      gap: 12px;
+    }
+    .path::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 8px;
+      bottom: 8px;
+      width: 4px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(20,184,122,.35), rgba(255,143,98,.2));
+    }
+    .roadstep {
+      position: relative;
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255,255,255,.74);
+      border: 1px solid var(--line);
+      box-shadow: 0 14px 34px rgba(16,33,51,.08);
+    }
+    .roadstep::before {
+      content: "";
+      position: absolute;
+      left: -36px;
+      top: 19px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--emerald), var(--coral));
+      box-shadow: 0 0 0 6px rgba(20,184,122,.1);
+    }
+    .roadstep strong { display: block; margin-bottom: 4px; }
+    .ending {
+      align-content: center;
+      min-height: 100%;
+    }
+    .closewrap { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+    .controls {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 16px;
+      width: min(1120px, calc(100vw - 44px));
+      padding: 12px;
+      border-radius: 28px;
+      border: 1px solid rgba(16,33,51,.1);
+      background: rgba(255,255,255,.82);
+      box-shadow: var(--shadow-strong);
+      backdrop-filter: blur(18px);
+      z-index: 5;
+      transition: transform .22s ease, opacity .22s ease, width .22s ease, padding .22s ease;
+    }
+    .controls.collapsed {
+      width: auto;
+      grid-template-columns: auto auto auto;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+    .controls.collapsed .nav-center,
+    .controls.collapsed #prev,
+    .controls.collapsed #next {
+      display: none;
+    }
+    .controls.hidden-dock {
+      opacity: .06;
+      transform: translateX(-50%) translateY(34px);
+    }
+    .controls.hidden-dock:hover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 118px;
+      justify-content: center;
+      padding: 13px 16px;
+      border: 0;
+      border-radius: 18px;
+      background: linear-gradient(180deg, var(--navy), var(--navy-soft));
+      color: #fff;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -.01em;
+      box-shadow: 0 12px 26px rgba(16,33,51,.22);
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+    .nav-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(16,33,51,.26);
+      filter: brightness(1.03);
+    }
+    .nav-btn:focus-visible,
+    .thumb:focus-visible {
+      outline: 3px solid rgba(20,184,122,.28);
+      outline-offset: 2px;
+    }
+    .dock-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      min-width: 132px;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 18px;
+      background: rgba(16,33,51,.07);
+      color: var(--navy);
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease;
+    }
+    .dock-toggle:hover {
+      background: rgba(16,33,51,.11);
+      transform: translateY(-1px);
+    }
+    .dock-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 82px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.92));
+      border: 1px solid rgba(16,33,51,.08);
+      color: var(--navy);
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: -.02em;
+    }
+    .nav-center {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+    .nav-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+    }
+    .meta {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+    .meta-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(88,103,121,.88);
+    }
+    .meta-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--navy);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -.02em;
+    }
+    .count {
+      min-width: 76px;
+      text-align: right;
+      color: var(--navy);
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: -.02em;
+    }
+    .progress {
+      position: relative;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(16,33,51,.08);
+      overflow: hidden;
+    }
+    .progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--emerald), var(--coral));
+      box-shadow: 0 0 18px rgba(20,184,122,.18);
+      transition: width .35s ease;
+    }
+    .thumbs {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .thumb {
+      min-width: 42px;
+      height: 34px;
+      border-radius: 12px;
+      border: 1px solid rgba(16,33,51,.08);
+      background: rgba(255,255,255,.82);
+      color: rgba(16,33,51,.62);
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .22s ease;
+    }
+    .thumb:hover {
+      background: rgba(16,33,51,.06);
+      color: var(--navy);
+    }
+    .thumb.active {
+      background: linear-gradient(180deg, rgba(16,33,51,.96), rgba(28,49,72,.96));
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(16,33,51,.18);
+      transform: translateY(-1px);
+    }
+    .slide.active > .eyebrow,
+    .slide.active > h1,
+    .slide.active > h2,
+    .slide.active > .lede,
+    .slide.active > .grid2,
+    .slide.active > .grid3,
+    .slide.active > .grid5,
+    .slide.active > .copy,
+    .slide.active > .closewrap {
+      animation: softRise .62s cubic-bezier(.2,.75,.2,1) both;
+    }
+    .slide.active > h1,
+    .slide.active > h2,
+    .slide.active > .copy { animation-delay: .05s; }
+    .slide.active > .lede { animation-delay: .1s; }
+    .slide.active > .grid2,
+    .slide.active > .grid3,
+    .slide.active > .grid5,
+    .slide.active > .closewrap { animation-delay: .16s; }
+    .slide.active .card,
+    .slide.active .panel,
+    .slide.active .mini,
+    .slide.active .phone,
+    .slide.active .float,
+    .slide.active .metric,
+    .slide.active .road,
+    .slide.active .roadstep,
+    .slide.active .close,
+    .slide.active .bubble {
+      animation: softRise .68s cubic-bezier(.2,.75,.2,1) both;
+    }
+    .slide.active .grid2 > *:nth-child(1),
+    .slide.active .grid3 > *:nth-child(1),
+    .slide.active .grid5 > *:nth-child(1) { animation-delay: .14s; }
+    .slide.active .grid2 > *:nth-child(2),
+    .slide.active .grid3 > *:nth-child(2),
+    .slide.active .grid5 > *:nth-child(2) { animation-delay: .2s; }
+    .slide.active .grid3 > *:nth-child(3),
+    .slide.active .grid5 > *:nth-child(3) { animation-delay: .26s; }
+    .slide.active .grid5 > *:nth-child(4) { animation-delay: .32s; }
+    .slide.active .grid5 > *:nth-child(5) { animation-delay: .38s; }
+    @media (max-width: 1200px) {
+      .controls {
+        width: min(96vw, 900px);
+        grid-template-columns: 1fr;
+      }
+      .controls.collapsed {
+        grid-template-columns: auto auto auto;
+      }
+      .nav-btn {
+        min-width: 0;
+      }
+      .nav-topline {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .count {
+        text-align: left;
+      }
+    }
+    @media print {
+      body { overflow: visible; background: #fff; }
+      .controls { display: none !important; }
+      .deck { display: block; padding: 0; }
+      .stage-shell { width: 1600px; height: 900px; }
+      .stage { position: static; transform: none !important; box-shadow: none; border-radius: 0; }
+      .slide, .slide.active { display: grid !important; position: relative; min-height: 100vh; page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <div class="stage-shell">
+      <div class="stage">
+    <section class="slide hero active">
+      <div class="copy">
+        <div class="eyebrow">Capstone Product Presentation</div>
+        <h1>Community Ride Coordination Platform</h1>
+        <p class="lede">A Thunder Bay focused mobility platform for students and communities that makes ride coordination safer, clearer, and more scalable than informal chats or generic ride-booking apps.</p>
+        <div class="pills">
+          <div class="pill">Local mobility for Thunder Bay</div>
+          <div class="pill">Rider + Driver + Admin</div>
+          <div class="pill">Real-time coordination</div>
+          <div class="pill">Built as a deployable full-stack product</div>
+        </div>
+        <div class="qr-card qr-hero">
+          <img src="presentation-qr.svg" alt="QR code for deployed capstone website" />
+          <div class="qr-text">
+            <strong>Scan to open the live project</strong>
+            <span>capstone-production-8627.up.railway.app</span>
+          </div>
+        </div>
+      </div>
+      <div class="stack visual">
+        <div class="route"></div>
+        <div class="phones">
+          <div class="phone">
+            <h3>Rider flow</h3>
+            <p>Create a ride, bargain with drivers, share the trip with other riders, verify pickup by OTP, and finish with billing and feedback.</p>
+          </div>
+          <div class="phone">
+            <h3>Admin control</h3>
+            <p>Approve drivers, manage city tax settings, oversee reports, and configure billing from one operational dashboard.</p>
+          </div>
+        </div>
+        <div class="floats">
+          <div class="float"><small>Core value</small><strong>Trust + structure</strong></div>
+          <div class="float"><small>Standout flow</small><strong>OTP pickup + join ride rewards</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Thunder Bay Context</div>
+      <h2>Why this problem matters here</h2>
+      <p class="lede">This project is not trying to copy big-city ride hailing. It is solving a local coordination problem for students and communities in Thunder Bay, where planning, trust, and affordability matter as much as convenience.</p>
+      <div class="grid2 problem">
+        <div class="panel chaos">
+          <div class="bubble">I have placement at 6:30 AM. Who can drop me near the hospital?</div>
+          <div class="bubble alt">I can maybe go. Are two other students joining?</div>
+          <div class="bubble">I am near Confederation. Can you pick me up after class?</div>
+          <div class="bubble alt">What is the final price, and who is confirming it?</div>
+          <div class="bubble">How do we verify the driver, pickup, and payment safely?</div>
+        </div>
+        <div class="panel calm">
+          <div class="dash">
+            <div class="dash-top">
+              <strong>Local opportunity</strong>
+              <span class="chip">built for campus and community mobility</span>
+            </div>
+            <div class="stats3">
+              <div class="stat"><span>Thunder Bay population</span><strong>108,843</strong></div>
+              <div class="stat"><span>Observed local ride groups</span><strong>~1,800</strong></div>
+              <div class="stat"><span>Student market signal</span><strong>5,900+</strong></div>
+            </div>
+            <div class="list">
+              <div class="row"><div><strong>Real community demand already exists</strong><div>Across 4 WhatsApp groups you have seen about 2,500 memberships, which you estimate is roughly 1,800 unique people after overlap.</div></div><span class="chip">local proof</span></div>
+              <div class="row"><div><strong>Student mobility is a strong entry market</strong><div>The 5,900+ signal combines Confederation’s nearly 3,500 students for 2024 and Lakehead’s 2,432 international students as a clear indicator of student travel demand.</div></div><span class="chip">entry market</span></div>
+              <div class="row"><div><strong>These numbers show demand signals, not one total</strong><div>City population, student market size, and WhatsApp ride-group activity each point to the same conclusion: there is enough local need to justify a trusted coordination platform.</div></div><span class="chip">meaningful</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Thunder Bay User Stories</div>
+      <h2>Three local stories this platform is designed for</h2>
+      <div class="grid3">
+        <div class="card">
+          <div class="icon">01</div>
+          <h3>International student after evening classes</h3>
+          <ul>
+            <li>Lives off campus and cannot always rely on one direct bus trip late in the day</li>
+            <li>Needs an affordable, trusted ride with clear price confirmation</li>
+            <li>Values verified drivers and visible ride status more than a random group chat message</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="icon">02</div>
+          <h3>Healthcare or placement student with early shifts</h3>
+          <ul>
+            <li>Has placement or work starting before regular schedules feel comfortable</li>
+            <li>Needs a planned ride the night before, not a last-minute scramble in the morning</li>
+            <li>Benefits from OTP pickup and a consistent coordination flow</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="icon">03</div>
+          <h3>Commuter driver with empty seats</h3>
+          <ul>
+            <li>Already drives between student housing, campus, downtown, or work zones</li>
+            <li>Wants to share seats safely and recover some cost without becoming a taxi service</li>
+            <li>Needs rider visibility, route clarity, and platform trust before accepting strangers</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Solution Overview</div>
+      <h2>What the platform actually delivers</h2>
+      <div class="grid3 features">
+        <div class="card feature"><div class="icon">01</div><h3>Rider-side ride creation</h3><p>Riders can create requests with pickup, timing, and multiple drop-off points instead of relying on ad hoc chats.</p></div>
+        <div class="card feature"><div class="icon">02</div><h3>Driver approval and activation</h3><p>License, ID, and insurance upload are built into signup, with admin approval before drivers enter the live ride market.</p></div>
+        <div class="card feature"><div class="icon">03</div><h3>Structured bargaining</h3><p>The ride only moves forward when both rider and driver explicitly confirm the final negotiated fare.</p></div>
+        <div class="card feature"><div class="icon">04</div><h3>Join-ride sharing logic</h3><p>Additional riders can request to join, creating rider credits and driver bonuses in a controlled workflow.</p></div>
+        <div class="card feature"><div class="icon">05</div><h3>OTP pickup and live notifications</h3><p>Pickup verification and real-time updates make the experience safer and more dependable.</p></div>
+        <div class="card feature"><div class="icon">06</div><h3>Admin billing and governance</h3><p>Billing settings, city tax rules, reports, and user controls make the system operationally useful.</p></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Rider Journey</div>
+      <h2>From request to ride completion</h2>
+      <div class="grid5 journey">
+        <div class="card"><div class="number">1</div><h3>Create request</h3><p>Sign up, select a city, add pickup, set time, and add one or more destinations.</p></div>
+        <div class="card"><div class="number">2</div><h3>Negotiate</h3><p>Review offers from drivers and use controlled bargaining to settle on a final price.</p></div>
+        <div class="card"><div class="number">3</div><h3>Share ride</h3><p>Other riders can request to join the trip, reducing cost for the main rider.</p></div>
+        <div class="card"><div class="number">4</div><h3>Verify pickup</h3><p>OTP verification adds a clear safety checkpoint before moving into the ride.</p></div>
+        <div class="card"><div class="number">5</div><h3>Settle and review</h3><p>Declare payment, check billing, and leave feedback or submit reports if needed.</p></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Trust Layer</div>
+      <h2>Built for control, compliance, and trust</h2>
+      <div class="trust-grid">
+        <div class="panel trust-card">
+          <h3>Rider dashboard value</h3>
+          <div class="list">
+            <div class="row"><div><strong>Active and pending rides</strong><div>Riders can clearly separate confirmed trips from requests still being negotiated.</div></div><span class="chip">clarity</span></div>
+            <div class="row"><div><strong>Joinable ride discovery</strong><div>Existing trips become visible as structured options instead of informal last-minute messages.</div></div><span class="chip">shared</span></div>
+            <div class="row"><div><strong>Price and safety visibility</strong><div>Riders see confirmed fares, driver details, OTP pickup, billing, and ride status in one place.</div></div><span class="chip">trusted</span></div>
+          </div>
+          <p>The rider experience is designed to reduce confusion, improve safety, and make local ride coordination feel dependable.</p>
+        </div>
+        <div class="panel trust-card">
+          <h3>Driver dashboard value</h3>
+          <div class="list">
+            <div class="row"><div><strong>Available requests</strong><div>Drivers can review live opportunities quickly.</div></div><span class="chip">real-time</span></div>
+            <div class="row"><div><strong>Accepted rides</strong><div>Active work is separated clearly from incoming requests.</div></div><span class="chip">organized</span></div>
+            <div class="row"><div><strong>Earnings visibility</strong><div>Drivers can see ride-linked value and activity.</div></div><span class="chip">practical</span></div>
+          </div>
+          <p>Driver access is intentionally gated until document review and admin approval are complete.</p>
+        </div>
+        <div class="panel trust-card">
+          <h3>Admin dashboard value</h3>
+          <div class="list">
+            <div class="row"><div><strong>Pending approvals</strong><div>Review license, ID, insurance, and expiry status.</div></div><span class="chip">safety</span></div>
+            <div class="row"><div><strong>City and tax settings</strong><div>Control billing logic through approved city profiles.</div></div><span class="chip">compliance</span></div>
+            <div class="row"><div><strong>Reports and users</strong><div>Manage issue handling and platform governance.</div></div><span class="chip">oversight</span></div>
+          </div>
+          <p>This governance layer is what separates the project from a simple ride board.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Revenue + Billing</div>
+      <h2>A practical billing model with real operational logic</h2>
+      <div class="grid2">
+        <div class="road">
+          <h3>Billing workflow</h3>
+          <div class="timeline">
+            <div class="step"><strong>Platform fee per ride</strong>Fees can be applied and tracked automatically as rides complete.</div>
+            <div class="step"><strong>14-day cycle</strong>The billing window is configurable and tied to an anchor date.</div>
+            <div class="step"><strong>Grace and lock states</strong>Bills move through accruing, due, locked, paid, or waived status.</div>
+            <div class="step"><strong>Payment confirmation</strong>Stripe support exists while the demo can still run in free mode.</div>
+          </div>
+        </div>
+        <div class="road">
+          <h3>Tax and access controls</h3>
+          <p>Billing is not flat or generic. The system stores city-level tax snapshots and supports both global free mode and per-user free access.</p>
+          <div class="tags" style="margin-top:14px;">
+            <div class="tag">City tax profile</div>
+            <div class="tag">Grace period</div>
+            <div class="tag">Waive bills</div>
+            <div class="tag">Payment reference</div>
+            <div class="tag">Period history</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Technical Architecture</div>
+      <h2>Modern full-stack design with real-time capability</h2>
+      <div class="grid3 arch">
+        <div class="grid2" style="grid-template-columns:1fr;gap:14px;">
+          <div class="mini"><h3>Frontend</h3><p>React, TypeScript, Vite, and Tailwind CSS power rider, driver, and admin workflows.</p></div>
+          <div class="mini"><h3>Free mapping support</h3><p>OpenStreetMap Nominatim is used for location suggestions to avoid paid API dependence.</p></div>
+        </div>
+        <div class="core"><div><strong>FastAPI Backend</strong><div>Role-based APIs, ride lifecycle logic, billing services, reports, uploads, and WebSocket events.</div></div></div>
+        <div class="grid2" style="grid-template-columns:1fr;gap:14px;">
+          <div class="mini"><h3>Data and realtime</h3><p>SQLAlchemy models support SQLite for demo use and PostgreSQL-ready deployment, with WebSocket-driven updates.</p></div>
+          <div class="mini"><h3>Deployment</h3><p>The frontend build can be served together with the backend as a single Railway service.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Competitive Positioning</div>
+      <h2>Where we fit against current alternatives</h2>
+      <div class="comp-grid">
+        <div class="card comp-card">
+          <h3>WhatsApp or Facebook groups</h3>
+          <ul>
+            <li>Fast for informal coordination inside existing communities</li>
+            <li>No driver verification, no structured bargaining, no OTP, no admin oversight</li>
+            <li>Flexible, but unsafe and hard to scale</li>
+          </ul>
+        </div>
+        <div class="card comp-card">
+          <h3>Uber and Lyft</h3>
+          <ul>
+            <li>Strong for private on-demand and scheduled rides with polished consumer apps</li>
+            <li>Not designed for community ride coordination, shared student workflows, or admin governance</li>
+            <li>Excellent convenience model, but a different product problem</li>
+          </ul>
+        </div>
+        <div class="card comp-card">
+          <h3>Uride</h3>
+          <ul>
+            <li>Relevant because it is a Thunder Bay founded rideshare company and now operates in multiple cities</li>
+            <li>Closer to our local context than Uber or Lyft, but still primarily a rideshare service, not a campus-community coordination platform</li>
+            <li>Shows local market validation, while our model focuses more on trust workflows and shared coordination</li>
+          </ul>
+        </div>
+        <div class="card comp-card">
+          <h3>Poparide and intercity carpooling</h3>
+          <ul>
+            <li>Works well for planned cost-sharing trips where drivers already have available seats</li>
+            <li>Less focused on short local rides, institution-linked trust, or admin-managed ecosystems</li>
+            <li>Closer in spirit, but aimed at a different trip pattern</li>
+          </ul>
+        </div>
+        <div class="card comp-card featured">
+          <h3>Our platform</h3>
+          <ul>
+            <li>Best for local community and campus mobility in a trust-sensitive environment</li>
+            <li>Verified onboarding, join rides, OTP pickup, admin workflows, and configurable billing</li>
+            <li>Purpose-built for Thunder Bay style coordination, not generic ride hailing</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Investment Roadmap</div>
+      <h2>What becomes possible with funding and paid services</h2>
+      <div class="grid3">
+        <div class="card">
+          <div class="icon">Now</div>
+          <h3>Current free version</h3>
+          <ul>
+            <li>OpenStreetMap based place suggestions</li>
+            <li>Web app experience with real-time coordination</li>
+            <li>Basic billing, document upload, and admin workflows</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="icon">Next</div>
+          <h3>Moderate investment</h3>
+          <ul>
+            <li>Google Maps or Mapbox for richer autocomplete, routing, and ETA accuracy</li>
+            <li>Twilio or similar service for reliable OTP and notification delivery</li>
+            <li>Full Stripe automation and OCR assisted document checks</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="icon">Scale</div>
+          <h3>Higher investment</h3>
+          <ul>
+            <li>Native Android and iOS apps with live trip tracking</li>
+            <li>Smarter shared-ride matching and route optimization</li>
+            <li>Analytics, fraud detection, and partnerships with institutions or employers</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide ending">
+      <div class="eyebrow">Closing</div>
+      <h2>From a Thunder Bay pilot to a scalable community mobility product</h2>
+      <p class="lede">The Community Ride Coordination Platform starts with a local problem that students and communities genuinely feel, then solves it with trust, structure, real-time coordination, and a realistic path toward product-market fit.</p>
+      <div class="closewrap">
+        <div class="close"><strong>Local relevance</strong><div>designed around Thunder Bay style commuting and student needs</div></div>
+        <div class="close"><strong>Product depth</strong><div>with shared rides, bargaining, trust, and governance built in</div></div>
+        <div class="close"><strong>Growth potential</strong><div>ready for paid services, partnerships, and broader market expansion</div></div>
+      </div>
+      <div class="qr-card qr-closing">
+        <img src="presentation-qr.svg" alt="QR code for deployed capstone website" />
+        <div class="qr-text">
+          <strong>Scan to explore the live website</strong>
+          <span>capstone-production-8627.up.railway.app</span>
+        </div>
+      </div>
+    </section>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="dockToggle" class="dock-toggle" type="button" aria-label="Toggle presentation controls">
+        <span id="dockToggleIcon">+</span>
+        <span id="dockToggleLabel">Show Controls</span>
+      </button>
+      <div class="dock-pill" id="dockMiniCount">01 / 11</div>
+      <button id="prev" class="nav-btn" type="button" aria-label="Previous slide">
+        <span>&larr;</span>
+        <span>Previous</span>
+      </button>
+      <div class="nav-center">
+        <div class="nav-topline">
+          <div class="meta">
+            <div class="meta-label">Current Slide</div>
+            <div class="meta-title" id="currentTitle">Community Ride Coordination Platform</div>
+          </div>
+          <div class="count" id="count">1 / 11</div>
+        </div>
+        <div class="progress" aria-hidden="true">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+      <button id="next" class="nav-btn" type="button" aria-label="Next slide">
+        <span>Next</span>
+        <span>&rarr;</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    const count = document.getElementById('count');
+    const miniCount = document.getElementById('dockMiniCount');
+    const title = document.getElementById('currentTitle');
+    const thumbs = document.getElementById('thumbs');
+    const progressFill = document.getElementById('progressFill');
+    const controls = document.querySelector('.controls');
+    const dockToggle = document.getElementById('dockToggle');
+    const dockToggleIcon = document.getElementById('dockToggleIcon');
+    const dockToggleLabel = document.getElementById('dockToggleLabel');
+    let i = 0;
+    let dockCollapsed = true;
+    function updateScale() {
+      const baseW = 1600;
+      const baseH = 900;
+      const horizontalPadding = 42;
+      const verticalPadding = 42;
+      const availableWidth = window.innerWidth - horizontalPadding;
+      const availableHeight = window.innerHeight - verticalPadding;
+      const scale = Math.min(availableWidth / baseW, availableHeight / baseH);
+      document.documentElement.style.setProperty('--scale', Math.max(scale, 0.2).toFixed(4));
+    }
+    function syncDock() {
+      controls.classList.toggle('collapsed', dockCollapsed);
+      dockToggleIcon.textContent = dockCollapsed ? '+' : '−';
+      dockToggleLabel.textContent = dockCollapsed ? 'Show Controls' : 'Hide Controls';
+      updateScale();
+    }
+    function getSlideTitle(slide) {
+      const heading = slide.querySelector('h2, h1');
+      return heading ? heading.textContent.trim() : `Slide ${slides.indexOf(slide) + 1}`;
+    }
+    function paintThumbs() {
+      thumbs.innerHTML = '';
+      slides.forEach((_, idx) => {
+        const b = document.createElement('button');
+        b.className = 'thumb' + (idx === i ? ' active' : '');
+        b.type = 'button';
+        b.textContent = String(idx + 1).padStart(2, '0');
+        b.title = getSlideTitle(slides[idx]);
+        b.setAttribute('aria-label', `Go to slide ${idx + 1}: ${getSlideTitle(slides[idx])}`);
+        b.addEventListener('click', () => setSlide(idx));
+        thumbs.appendChild(b);
+      });
+    }
+    function setSlide(next) {
+      i = (next + slides.length) % slides.length;
+      slides.forEach((slide, idx) => slide.classList.toggle('active', idx === i));
+      count.textContent = `${i + 1} / ${slides.length}`;
+      miniCount.textContent = `${String(i + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      title.textContent = getSlideTitle(slides[i]);
+      progressFill.style.width = `${((i + 1) / slides.length) * 100}%`;
+      paintThumbs();
+    }
+    dockToggle.addEventListener('click', () => {
+      dockCollapsed = !dockCollapsed;
+      syncDock();
+    });
+    document.getElementById('prev').addEventListener('click', () => setSlide(i - 1));
+    document.getElementById('next').addEventListener('click', () => setSlide(i + 1));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); setSlide(i + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); setSlide(i - 1); }
+      if (e.key === 'Home') setSlide(0);
+      if (e.key === 'End') setSlide(slides.length - 1);
+      if (e.key.toLowerCase() === 'c') {
+        dockCollapsed = !dockCollapsed;
+        syncDock();
+      }
+    });
+    window.addEventListener('resize', updateScale);
+    setSlide(0);
+    syncDock();
+    updateScale();
+  </script>
+</body>
+</html>

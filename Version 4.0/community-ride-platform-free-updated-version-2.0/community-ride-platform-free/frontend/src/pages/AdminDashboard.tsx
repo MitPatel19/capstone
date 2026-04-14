@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Check, ExternalLink, FileText, ImageOff, LogOut, Shield, Users, Wallet, X } from 'lucide-react'
 import { api, clearSession } from '../api'
+import { wsClient } from '../ws'
 
 type Pending = {
   driver_id: number
@@ -90,6 +91,11 @@ type BillingOverview = {
   paid_at?: string | null
 }
 
+type Metrics = {
+  active_riders: number
+  active_drivers: number
+}
+
 type TabKey = 'pending' | 'users' | 'fees' | 'cities' | 'reports'
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -133,6 +139,7 @@ export default function AdminDashboard() {
   })
   const [billingRows, setBillingRows] = useState<BillingOverview[]>([])
   const [cityDrafts, setCityDrafts] = useState<Record<number, { province_name: string; tax_name: string; tax_rate: number }>>({})
+  const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingFee, setSavingFee] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -145,13 +152,14 @@ export default function AdminDashboard() {
   async function load() {
     setLoading(true)
     try {
-      const [p, u, f, r, c, cr] = await Promise.all([
+      const [p, u, f, r, c, cr, met] = await Promise.all([
         api.get('/admin/drivers/pending'),
         api.get('/admin/users'),
         api.get('/admin/billing/settings'),
         api.get('/admin/reports'),
         api.get('/admin/cities'),
         api.get('/admin/cities/requests'),
+        api.get('/auth/metrics'),
       ])
       const billing = await api.get('/admin/billing/overview')
       setPending(p.data)
@@ -160,6 +168,10 @@ export default function AdminDashboard() {
       setReports(r.data)
       setCities(c.data)
       setCityRequests(cr.data)
+      setMetrics({
+        active_riders: met.data.active_riders,
+        active_drivers: met.data.active_drivers,
+      })
       setBillingRows(billing.data)
       setCityDrafts(
         Object.fromEntries(
@@ -180,6 +192,20 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     load()
+  }, [])
+
+  useEffect(() => {
+    const unsub = wsClient.on((msg) => {
+      if (msg?.type === 'presence_update') {
+        setMetrics({
+          active_riders: Number(msg.active_riders ?? 0),
+          active_drivers: Number(msg.active_drivers ?? 0),
+        })
+      }
+    })
+    return () => {
+      void unsub()
+    }
   }, [])
 
   async function saveFee() {
@@ -224,8 +250,18 @@ export default function AdminDashboard() {
         value: reportRows.length,
         icon: <AlertTriangle className="h-11 w-11 text-rose-200" />,
       },
+      {
+        label: 'Active Riders',
+        value: metrics?.active_riders ?? 0,
+        icon: <Users className="h-11 w-11 text-sky-200" />,
+      },
+      {
+        label: 'Active Drivers',
+        value: metrics?.active_drivers ?? 0,
+        icon: <Shield className="h-11 w-11 text-emerald-200" />,
+      },
     ],
-    [billingSettings.fee_per_ride, pending.length, reportRows.length, users.length]
+    [billingSettings.fee_per_ride, metrics?.active_drivers, metrics?.active_riders, pending.length, reportRows.length, users.length]
   )
 
   async function approveDriver(driverId: number) {
@@ -314,7 +350,7 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
-        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-6">
           {stats.map((stat) => (
             <article key={stat.label} className="rounded-3xl border border-slate-300 bg-white px-8 py-8">
               <div className="flex items-center justify-between gap-4">
