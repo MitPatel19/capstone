@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from datetime import datetime
-import os
 
 from app.db.session import get_db
 from app.core.auth import require_role
-from app.core.settings import settings
+from app.core.storage import upload_path_to_url
 from app.models import User, UserRole, DriverProfile, DriverApprovalStatus, AccountStatus, PlatformFee, UserProfile, Rating, City, DriverCitySelection, SupportReport, SupportReportStatus
 from app.schemas import (
     AdminBillOverviewOut,
@@ -50,21 +49,6 @@ def user_out(
         billing_free_access=billing_free_access,
         billing_access_status=billing_access_status,
     )
-
-
-def upload_path_to_url(path: str) -> str:
-    if not path:
-        return ""
-    normalized_path = path.replace("\\", "/")
-    normalized_upload_dir = settings.UPLOAD_DIR.replace("\\", "/").rstrip("/")
-    filename = os.path.basename(normalized_path)
-
-    if normalized_path.startswith(normalized_upload_dir + "/"):
-        return f"/uploads/{filename}"
-    if "/uploads/" in normalized_path:
-        return normalized_path[normalized_path.index("/uploads/"):]
-    return f"/uploads/{filename}"
-
 @router.get("/drivers/pending")
 def pending_drivers(user: User = Depends(require_role(UserRole.admin)), db: Session = Depends(get_db)):
     sync_driver_license_notifications(db)

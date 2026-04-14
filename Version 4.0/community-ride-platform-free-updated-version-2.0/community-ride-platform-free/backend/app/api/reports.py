@@ -7,25 +7,12 @@ import os
 import uuid
 
 from app.core.auth import get_current_user
-from app.core.settings import settings
+from app.core.storage import build_upload_path, ensure_upload_dir, upload_path_to_url
 from app.db.session import get_db
 from app.models import Ride, SupportReport, SupportReportStatus, SupportReportTargetType, User, UserRole
 from app.schemas import SupportReportOut
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-
-
-def upload_path_to_url(path: str) -> str:
-    if not path:
-        return ""
-    normalized_path = path.replace("\\", "/")
-    normalized_upload_dir = settings.UPLOAD_DIR.replace("\\", "/").rstrip("/")
-    filename = os.path.basename(normalized_path)
-    if normalized_path.startswith(normalized_upload_dir + "/"):
-        return f"/uploads/{filename}"
-    if "/uploads/" in normalized_path:
-        return normalized_path[normalized_path.index("/uploads/"):]
-    return f"/uploads/{filename}"
 
 
 def can_user_report_ride(user: User, ride: Ride, db: Session) -> bool:
@@ -126,10 +113,10 @@ async def create_report(
 
     attachment_path = ""
     if attachment:
-        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        ensure_upload_dir()
         ext = os.path.splitext(attachment.filename or "")[1]
         fname = f"report_{uuid.uuid4().hex}{ext}"
-        attachment_path = os.path.join(settings.UPLOAD_DIR, fname)
+        attachment_path = str(build_upload_path(fname))
         async with aiofiles.open(attachment_path, "wb") as f:
             content = await attachment.read()
             await f.write(content)

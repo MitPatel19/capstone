@@ -119,6 +119,13 @@ function resolveDocumentUrl(url: string) {
   return new URL(url.startsWith('/') ? url : `/${url}`, baseURL).toString()
 }
 
+function getDocumentKind(url: string) {
+  const cleanUrl = url.split('?')[0].toLowerCase()
+  if (/\.(png|jpe?g|gif|bmp|webp|svg|heic|heif)$/i.test(cleanUrl)) return 'image'
+  if (/\.pdf$/i.test(cleanUrl)) return 'pdf'
+  return 'other'
+}
+
 export default function AdminDashboard() {
   const nav = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('pending')
@@ -227,6 +234,7 @@ export default function AdminDashboard() {
   }
 
   const reportRows = reports
+  const selectedDocumentKind = selectedDocument ? getDocumentKind(selectedDocument.url) : 'other'
 
   const stats = useMemo(
     () => [
@@ -1023,13 +1031,38 @@ export default function AdminDashboard() {
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </div>
-                ) : (
+                ) : selectedDocumentKind === 'pdf' ? (
+                  <iframe
+                    src={selectedDocument.url}
+                    title={selectedDocument.label}
+                    className="h-[75vh] w-full border-0"
+                  />
+                ) : selectedDocumentKind === 'image' ? (
                   <img
                     src={selectedDocument.url}
                     alt={selectedDocument.label}
                     className="max-h-[75vh] w-full object-contain"
                     onError={() => setDocumentLoadFailed(true)}
                   />
+                ) : (
+                  <div className="flex max-w-md flex-col items-center px-6 py-12 text-center">
+                    <div className="mb-4 rounded-full bg-slate-100 p-4 text-slate-500">
+                      <FileText className="h-8 w-8" />
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900">Open this document externally</h4>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      This file type is available, but the dashboard preview only supports images and PDFs.
+                    </p>
+                    <a
+                      href={selectedDocument.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      Open Original
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
