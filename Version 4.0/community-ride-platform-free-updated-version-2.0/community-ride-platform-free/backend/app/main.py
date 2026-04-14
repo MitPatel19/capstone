@@ -16,9 +16,11 @@ from app.api.billing import router as billing_router
 from app.api.reports import router as reports_router
 from app.ws.manager import manager
 from app.core.auth import decode_token
-from app.core.storage import ensure_upload_dir
 
-upload_dir = ensure_upload_dir()
+upload_dir = Path(settings.UPLOAD_DIR)
+if not upload_dir.is_absolute():
+    upload_dir = (Path.cwd() / upload_dir).resolve()
+upload_dir.mkdir(parents=True, exist_ok=True)
 
 frontend_dist_dir = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 frontend_index_path = frontend_dist_dir / "index.html"

@@ -10,7 +10,6 @@ import uuid
 
 from app.core.auth import hash_password, verify_password, create_access_token, get_current_user, require_role
 from app.core.settings import settings
-from app.core.storage import build_upload_path, ensure_upload_dir, upload_path_to_url
 from app.db.session import get_db
 from app.models import User, UserRole, AccountStatus, DriverProfile, DriverApprovalStatus, UserProfile, Rating, Ride, RideStatus, JoinRequest, JoinRequestStatus, City, DriverCitySelection, RiderDefaultRoute, DriverVehicle, Notification
 from app.schemas import Token, ProfileOut, ProfileUpdateIn, ChangePasswordIn, MetricsOut, RiderStatsOut, DriverDocsOut, NotificationOut, AuthActionOut
@@ -250,16 +249,16 @@ async def signup_driver(
     if not parsed_license_expiry:
         raise HTTPException(400, "License expiry date must use YYYY-MM-DD format")
 
-    ensure_upload_dir()
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
     async def save_file(up: UploadFile) -> str:
         ext = os.path.splitext(up.filename or "")[1]
         fname = f"{uuid.uuid4().hex}{ext}"
-        path = build_upload_path(fname)
+        path = os.path.join(settings.UPLOAD_DIR, fname)
         async with aiofiles.open(path, "wb") as f:
             content = await up.read()
             await f.write(content)
-        return str(path)
+        return path
 
     license_path = await save_file(license_file)
     id_path = await save_file(id_file)
@@ -419,7 +418,7 @@ def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     member_since = user.created_at.strftime("%B %Y")
     avatar_url = ""
     if prof.avatar_path:
-        avatar_url = upload_path_to_url(prof.avatar_path)
+        avatar_url = prof.avatar_path.replace(settings.UPLOAD_DIR, "/uploads")
     return ProfileOut(
         id=user.id,
         role=user.role.value,
@@ -465,15 +464,15 @@ def change_password(payload: ChangePasswordIn, user: User = Depends(get_current_
 
 @router.post("/avatar", response_model=dict)
 async def upload_avatar(file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    ensure_upload_dir()
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     ext = os.path.splitext(file.filename or "")[1]
     fname = f"avatar_{user.id}_{uuid.uuid4().hex}{ext}"
-    path = build_upload_path(fname)
+    path = os.path.join(settings.UPLOAD_DIR, fname)
     async with aiofiles.open(path, "wb") as f:
         content = await file.read()
         await f.write(content)
     prof = get_or_create_profile(db, user.id)
-    prof.avatar_path = str(path)
+    prof.avatar_path = path
     db.commit()
     return {"status": "ok"}
 
@@ -615,18 +614,18 @@ async def update_driver_documents(
     prof = user.driver_profile
     if not prof:
         raise HTTPException(404, "Driver profile not found")
-    ensure_upload_dir()
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
     async def save_optional(up: UploadFile | None) -> str | None:
         if not up:
             return None
         ext = os.path.splitext(up.filename or "")[1]
         fname = f"{uuid.uuid4().hex}{ext}"
-        path = build_upload_path(fname)
+        path = os.path.join(settings.UPLOAD_DIR, fname)
         async with aiofiles.open(path, "wb") as f:
             content = await up.read()
             await f.write(content)
-        return str(path)
+        return path
 
     lp = await save_optional(license_file)
     ip = await save_optional(id_file)
