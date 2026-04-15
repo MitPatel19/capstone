@@ -13,7 +13,7 @@ export default function RiderSignup() {
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
   const [phone,setPhone]=useState('')
-  const [age,setAge]=useState(18)
+  const [age,setAge]=useState('18')
   const [isStudent,setIsStudent]=useState(false)
   const [cities, setCities] = useState<City[]>([])
   const [cityId, setCityId] = useState(0)
@@ -30,8 +30,10 @@ export default function RiderSignup() {
     e.preventDefault()
     setErr(null); setLoading(true)
     try{
+      const parsedAge = Number(age)
+      if (!Number.isInteger(parsedAge) || parsedAge < 18) throw new Error('Rider must be 18+')
       if (!cityId) throw new Error('Please select your city')
-      const res = await api.post('/auth/signup/rider',{name,email,password,phone,age,is_student:isStudent,city_id: cityId})
+      const res = await api.post('/auth/signup/rider',{name,email,password,phone,age: parsedAge,is_student:isStudent,city_id: cityId})
       const params = new URLSearchParams({
         mode: 'verify',
         role: 'rider',
@@ -71,7 +73,7 @@ export default function RiderSignup() {
           </div>
           <div>
             <Label>Age</Label>
-            <Input type="number" value={age} onChange={e=>setAge(parseInt(e.target.value||'18'))} />
+            <Input type="number" min={18} step={1} value={age} onChange={e=>setAge(e.target.value)} />
           </div>
           <div>
             <Label>City Selection</Label>

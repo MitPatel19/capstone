@@ -23,7 +23,7 @@ export default function DriverSignup() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
-  const [age, setAge] = useState(23)
+  const [age, setAge] = useState('23')
   const [cities, setCities] = useState<City[]>([])
   const [cityId, setCityId] = useState(0)
   const [license, setLicense] = useState<File | null>(null)
@@ -44,6 +44,8 @@ export default function DriverSignup() {
     setErr(null)
     setLoading(true)
     try {
+      const parsedAge = Number(age)
+      if (!Number.isInteger(parsedAge) || parsedAge < 23) throw new Error('Driver must be 23+')
       if (!cityId) throw new Error('Please select your city')
       if (!licenseExpiryDate) throw new Error('Please enter the driver license expiry date')
       const fd = new FormData()
@@ -51,7 +53,7 @@ export default function DriverSignup() {
       fd.append('email', email)
       fd.append('password', password)
       fd.append('phone', phone)
-      fd.append('age', String(age))
+      fd.append('age', String(parsedAge))
       fd.append('is_student', 'false')
       fd.append('city_id', String(cityId))
       fd.append('license_expiry_date', licenseExpiryDate)
@@ -106,7 +108,7 @@ export default function DriverSignup() {
             </div>
             <div>
               <label className="mb-2 block text-base font-bold">Age (23+)</label>
-              <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base" type="number" min={23} value={age} onChange={(e) => setAge(Number(e.target.value || 23))} />
+              <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base" type="number" min={23} step={1} value={age} onChange={(e) => setAge(e.target.value)} />
             </div>
             <div>
               <label className="mb-2 block text-base font-bold">City Selection</label>
