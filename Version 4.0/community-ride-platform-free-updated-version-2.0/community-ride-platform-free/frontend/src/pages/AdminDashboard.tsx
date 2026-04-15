@@ -339,7 +339,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <header className="border-b border-slate-300 bg-white pt-safe">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
           <div className="flex items-center gap-3">
             <Shield className="h-8 w-8 text-brand-600" strokeWidth={1.8} />
             <h1 className="text-2xl font-black sm:text-3xl">Admin Dashboard</h1>
@@ -357,8 +357,8 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
-        <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
+      <main className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
+        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-6">
           {stats.map((stat) => (
             <article key={stat.label} className="h-full min-h-[9rem] rounded-3xl border border-slate-300 bg-white px-8 py-8">
               <div className="flex items-center justify-between gap-4">

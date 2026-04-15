@@ -36,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-slate-100 text-slate-900">
         <RiderTopBar />
-        <main className="mx-auto w-full max-w-6xl px-4 py-5 pb-safe sm:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] px-4 py-5 pb-safe sm:py-8">{children}</main>
       </div>
     )
   }

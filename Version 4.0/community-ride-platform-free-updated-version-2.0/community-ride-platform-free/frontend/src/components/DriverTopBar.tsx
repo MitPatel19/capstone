@@ -8,7 +8,7 @@ export function DriverTopBar() {
 
   return (
     <header className="border-b border-slate-300 bg-white pt-safe">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <button className="flex items-center gap-3 self-start text-left" onClick={() => nav('/driver')}>
           <CarFront className="h-7 w-7 text-emerald-600" />
           <span className="text-xl font-black sm:text-2xl">RideConnect Driver</span>

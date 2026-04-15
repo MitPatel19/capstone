@@ -182,13 +182,13 @@ export default function DriverDashboard() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <DriverTopBar />
-      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
+      <main className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
         <section>
           <h1 className="text-3xl font-black sm:text-4xl">Welcome, {me?.name || 'Driver'}!</h1>
           <p className="mt-1 text-sm text-slate-600 sm:text-base">Accept rides and earn money</p>
         </section>
 
-        <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4 md:gap-6">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6 md:gap-6">
           {stats.map((s) => (
             <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
           ))}
