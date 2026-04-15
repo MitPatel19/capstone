@@ -358,9 +358,9 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 pb-safe sm:space-y-8 sm:py-8">
-        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-6">
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
           {stats.map((stat) => (
-            <article key={stat.label} className="rounded-3xl border border-slate-300 bg-white px-8 py-8">
+            <article key={stat.label} className="h-full min-h-[9rem] rounded-3xl border border-slate-300 bg-white px-8 py-8">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-base text-slate-600">{stat.label}</div>

@@ -44,7 +44,7 @@ function formatTime12h(input: string) {
 
 function StatCard({ label, value, icon }: { label: string; value: React.ReactNode; icon: React.ReactNode }) {
   return (
-    <article className="rounded-3xl border border-slate-300 bg-white p-5">
+    <article className="h-full min-h-[8.5rem] rounded-3xl border border-slate-300 bg-white p-5">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm text-slate-600">{label}</div>
@@ -188,7 +188,7 @@ export default function DriverDashboard() {
           <p className="mt-1 text-sm text-slate-600 sm:text-base">Accept rides and earn money</p>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6 md:gap-6">
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4 md:gap-6">
           {stats.map((s) => (
             <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
           ))}
