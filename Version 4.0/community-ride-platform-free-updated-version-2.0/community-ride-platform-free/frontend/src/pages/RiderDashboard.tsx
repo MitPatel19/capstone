@@ -162,7 +162,7 @@ export default function RiderDashboard() {
         <p className="mt-1 text-sm text-slate-600 sm:text-base">Manage your rides and travel safely</p>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5 md:gap-6">
+      <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4 md:gap-6">
         <StatCard label="Active Rides" value={metrics?.active_rides ?? (loading ? '-' : 0)} icon={<CarFront className="h-11 w-11 text-blue-200" />} />
         <StatCard
           label="Your Rating"
