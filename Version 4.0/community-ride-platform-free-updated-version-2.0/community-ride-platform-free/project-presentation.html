@@ -156,6 +156,65 @@
       grid-template-columns: 1.1fr .9fr;
       align-items: center;
     }
+    .title-slide {
+      align-content: center;
+      justify-items: center;
+      text-align: center;
+      gap: 18px;
+      padding: 76px 120px 90px;
+    }
+    .title-slide h1 {
+      max-width: 12ch;
+      font-size: clamp(58px, 6vw, 104px);
+    }
+    .title-subtitle {
+      max-width: 18ch;
+      font-size: 23px;
+      line-height: 1.45;
+      color: var(--muted);
+      letter-spacing: -.01em;
+    }
+    .apa-block {
+      width: min(820px, 100%);
+      padding: 26px 28px;
+      border-radius: 28px;
+      border: 1px solid rgba(16,33,51,.08);
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 20px 46px rgba(16,33,51,.1);
+      display: grid;
+      gap: 14px;
+      text-align: left;
+    }
+    .apa-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 18px;
+      align-items: start;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(16,33,51,.08);
+    }
+    .apa-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .apa-label {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(88,103,121,.9);
+    }
+    .apa-value {
+      font-size: 24px;
+      line-height: 1.4;
+      color: var(--navy);
+      letter-spacing: -.02em;
+    }
+    .apa-note {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
     .stack, .panel, .card, .mini, .quote, .road {
       background: var(--surface);
       border: 1px solid var(--line);
@@ -789,7 +848,32 @@
   <div class="deck">
     <div class="stage-shell">
       <div class="stage">
-    <section class="slide hero active">
+    <section class="slide title-slide active">
+      <div class="eyebrow">APA Title Page</div>
+      <h1>Community Ride Coordination Platform</h1>
+      <p class="title-subtitle">Capstone project presentation for academic evaluation and live product demonstration.</p>
+      <div class="apa-block">
+        <div class="apa-row">
+          <div class="apa-label">Team Members</div>
+          <div class="apa-value">Mit, Dev, Ridham, Pratham</div>
+        </div>
+        <div class="apa-row">
+          <div class="apa-label">Course</div>
+          <div class="apa-value">IC 400 T10 Capstone Project</div>
+        </div>
+        <div class="apa-row">
+          <div class="apa-label">Professor</div>
+          <div class="apa-value">Malek Alsmadi</div>
+        </div>
+        <div class="apa-row">
+          <div class="apa-label">Presentation Date</div>
+          <div class="apa-value">15/04/2026</div>
+        </div>
+      </div>
+      <div class="apa-note">Prepared for the capstone project presentation and project demonstration.</div>
+    </section>
+
+    <section class="slide hero">
       <div class="copy">
         <div class="eyebrow">Capstone Product Presentation</div>
         <h1>Community Ride Coordination Platform</h1>
@@ -847,11 +931,11 @@
             </div>
             <div class="stats3">
               <div class="stat"><span>Thunder Bay population</span><strong>108,843</strong></div>
-              <div class="stat"><span>Observed local ride groups</span><strong>~1,800</strong></div>
+              <div class="stat"><span>Observed local ride group's members</span><strong>~1,800</strong></div>
               <div class="stat"><span>Student market signal</span><strong>5,900+</strong></div>
             </div>
             <div class="list">
-              <div class="row"><div><strong>Real community demand already exists</strong><div>Across 4 WhatsApp groups you have seen about 2,500 memberships, which you estimate is roughly 1,800 unique people after overlap.</div></div><span class="chip">local proof</span></div>
+              <div class="row"><div><strong>Real community demand already exists</strong><div>Across 4 WhatsApp groups we have seen about 2,500 memberships, which we estimate is roughly 1,800 unique people after overlap.</div></div><span class="chip">local proof</span></div>
               <div class="row"><div><strong>Student mobility is a strong entry market</strong><div>The 5,900+ signal combines Confederation’s nearly 3,500 students for 2024 and Lakehead’s 2,432 international students as a clear indicator of student travel demand.</div></div><span class="chip">entry market</span></div>
               <div class="row"><div><strong>These numbers show demand signals, not one total</strong><div>City population, student market size, and WhatsApp ride-group activity each point to the same conclusion: there is enough local need to justify a trusted coordination platform.</div></div><span class="chip">meaningful</span></div>
             </div>

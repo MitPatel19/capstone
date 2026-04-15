@@ -26,6 +26,8 @@ WORKDIR /app/backend
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY project-presentation.html /app/project-presentation.html
+COPY presentation-qr.svg /app/presentation-qr.svg
 COPY backend/ ./
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
